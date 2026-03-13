@@ -18,6 +18,10 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import ServicesScreen from './2_servicesScreen';
+import BookingsScreen from './3_bookingScreen';
+import WalletScreen from './4_walletScreen';
+import ProfileScreen from './5_profileScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -339,7 +343,7 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <ScrollView
+     { false && <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
         bounces={true}
@@ -503,8 +507,13 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         <View style={{ height: 90 }} />
-      </ScrollView>
-
+      </ScrollView>}
+      {/* <ProfileScreen/> */}
+      <BookingsScreen/>
+     {/*  <WalletScreen/> */}
+       
+    {/*   <ServicesScreen/> */}
+    {/*  <ProfileScreen/> */}
       {/* ── PROFESSIONAL BOTTOM NAV WITH PILL INDICATOR ── */}
       <BottomNavigation 
         activeTab={activeTab}
