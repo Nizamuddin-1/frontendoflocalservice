@@ -151,119 +151,8 @@ const MENU_SECTIONS: MenuSection[] = [
         iconColor: C.purple,
         type: "badge",
         badgeCount: 3,
-      },
-      {
-        id: "payment",
-        label: "Payment Methods",
-        sublabel: "UPI, cards & wallet",
-        icon: "card-outline",
-        iconBg: C.greenBg,
-        iconColor: C.green,
-        type: "navigate",
-      },
-      {
-        id: "reviews",
-        label: "My Reviews",
-        sublabel: "12 reviews written",
-        icon: "star-half-outline",
-        iconBg: C.amberBg,
-        iconColor: C.amber,
-        type: "navigate",
-      },
-    ],
-  },
-  {
-    title: "Preferences",
-    items: [
-      {
-        id: "notifications",
-        label: "Push Notifications",
-        sublabel: "Booking updates & offers",
-        icon: "notifications-outline",
-        iconBg: C.blueLight,
-        iconColor: C.blue,
-        type: "toggle",
-        toggleKey: "notifications",
-      },
-      {
-        id: "smsAlerts",
-        label: "SMS Alerts",
-        sublabel: "OTP & confirmations",
-        icon: "chatbubble-ellipses-outline",
-        iconBg: C.tealBg,
-        iconColor: C.teal,
-        type: "toggle",
-        toggleKey: "smsAlerts",
-      },
-      {
-        id: "locationAccess",
-        label: "Location Access",
-        sublabel: "For nearby services",
-        icon: "navigate-outline",
-        iconBg: C.greenBg,
-        iconColor: C.green,
-        type: "toggle",
-        toggleKey: "locationAccess",
-      },
-      {
-        id: "darkMode",
-        label: "Dark Mode",
-        sublabel: "Switch app appearance",
-        icon: "moon-outline",
-        iconBg: "#F1F0FF",
-        iconColor: C.purple,
-        type: "toggle",
-        toggleKey: "darkMode",
-      },
-    ],
-  },
-  {
-    title: "Security",
-    items: [
-      {
-        id: "faceId",
-        label: "Face ID / Fingerprint",
-        sublabel: "Quick & secure login",
-        icon: "finger-print-outline",
-        iconBg: C.tealBg,
-        iconColor: C.teal,
-        type: "toggle",
-        toggleKey: "faceId",
-      },
-      {
-        id: "changePassword",
-        label: "Change Password",
-        sublabel: "Last changed 3 months ago",
-        icon: "lock-closed-outline",
-        iconBg: C.amberBg,
-        iconColor: C.amber,
-        type: "navigate",
-      },
-      {
-        id: "activeSessions",
-        label: "Active Sessions",
-        sublabel: "2 devices logged in",
-        icon: "phone-portrait-outline",
-        iconBg: C.orangeBg,
-        iconColor: C.orange,
-        type: "badge",
-        badgeCount: 2,
-      },
-    ],
-  },
-  {
-    title: "Support & Legal",
-    items: [
-      {
-        id: "help",
-        label: "Help Centre",
-        sublabel: "FAQs & live chat",
-        icon: "help-circle-outline",
-        iconBg: C.blueLight,
-        iconColor: C.blue,
-        type: "navigate",
-      },
-      {
+      }, 
+        {
         id: "refer",
         label: "Refer & Earn",
         sublabel: "Earn ₹100 per referral",
@@ -272,22 +161,6 @@ const MENU_SECTIONS: MenuSection[] = [
         iconColor: "#E11D74",
         type: "badge",
         badgeText: "₹100",
-      },
-      {
-        id: "privacy",
-        label: "Privacy Policy",
-        icon: "shield-checkmark-outline",
-        iconBg: C.greenBg,
-        iconColor: C.green,
-        type: "navigate",
-      },
-      {
-        id: "terms",
-        label: "Terms of Service",
-        icon: "document-text-outline",
-        iconBg: C.blueLight,
-        iconColor: C.slate,
-        type: "navigate",
       },
     ],
   },
@@ -409,30 +282,7 @@ const LoyaltyBar = ({ points }: { points: number }) => {
   );
 };
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-const StatCard = ({ stat }: { stat: typeof STATS[0] }) => {
-  const scaleAnim = useRef(new Animated.Value(0.85)).current;
-  const opacAnim  = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 12 }),
-      Animated.timing(opacAnim,  { toValue: 1, duration: 400, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  return (
-    <Animated.View style={[styles.statCard, { transform: [{ scale: scaleAnim }], opacity: opacAnim }]}>
-      <View style={[styles.statIconWrap, { backgroundColor: stat.color + "18" }]}>
-        <Ionicons name={stat.icon as any} size={18} color={stat.color} />
-      </View>
-      <Text style={[styles.statValue, { fontFamily: F.displayBold, color: stat.color }]}>
-        {stat.value}
-      </Text>
-      <Text style={[styles.statLabel, { fontFamily: F.bodyReg }]}>{stat.label}</Text>
-    </Animated.View>
-  );
-};
+ 
 
 // ─── Menu Item ────────────────────────────────────────────────────────────────
 const MenuItemRow = ({
@@ -647,13 +497,14 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={C.heroTop} />
+      {/* ── Status bar dark since hero is now white ── */}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* ── Floating Nav ── */}
       <View style={styles.floatingNav} pointerEvents="box-none">
         <Animated.View style={[styles.floatingNavBg, { opacity: headerBgOpacity }]} />
         <TouchableOpacity style={styles.navBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="chevron-back" size={22} color="#FFF" />
+          <Ionicons name="chevron-back" size={22} color={C.navy} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { fontFamily: F.displaySemi }]}>Profile</Text>
         <TouchableOpacity
@@ -661,7 +512,7 @@ export default function ProfileScreen() {
           onPress={() => setShowEdit(true)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="create-outline" size={20} color="#FFF" />
+          <Ionicons name="create-outline" size={20} color={C.navy} />
         </TouchableOpacity>
       </View>
 
@@ -676,7 +527,7 @@ export default function ProfileScreen() {
       >
         {/* ── Hero Section ── */}
         <View style={styles.hero}>
-          {/* Decorative elements */}
+          {/* Decorative elements — toned for light bg */}
           <View style={styles.heroCircle1} />
           <View style={styles.heroCircle2} />
           <View style={styles.heroCircle3} />
@@ -691,27 +542,27 @@ export default function ProfileScreen() {
             {/* Name & Info */}
             <Text style={[styles.heroName, { fontFamily: F.displayBold }]}>{USER.name}</Text>
             <View style={styles.heroMetaRow}>
-              <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.6)" />
+              <Ionicons name="location-outline" size={13} color={C.slate} />
               <Text style={[styles.heroMeta, { fontFamily: F.bodyReg }]}>{USER.location}</Text>
             </View>
             <View style={styles.heroMetaRow}>
-              <Ionicons name="calendar-outline" size={13} color="rgba(255,255,255,0.6)" />
+              <Ionicons name="calendar-outline" size={13} color={C.slate} />
               <Text style={[styles.heroMeta, { fontFamily: F.bodyReg }]}>Member since {USER.memberSince}</Text>
             </View>
 
             {/* Verification chips */}
             <View style={styles.heroChipsRow}>
-              <View style={[styles.heroChip, { borderColor: "rgba(16,185,129,0.4)", backgroundColor: "rgba(16,185,129,0.12)" }]}>
+              <View style={[styles.heroChip, { borderColor: "rgba(16,185,129,0.35)", backgroundColor: C.greenBg }]}>
                 <Ionicons name="shield-checkmark" size={11} color={C.green} />
                 <Text style={[styles.heroChipText, { fontFamily: F.bodySemi, color: C.green }]}>Verified</Text>
               </View>
-              <View style={[styles.heroChip, { borderColor: "rgba(212,168,83,0.4)", backgroundColor: "rgba(212,168,83,0.12)" }]}>
-                <MaterialCommunityIcons name="crown" size={11} color={C.goldLight} />
-                <Text style={[styles.heroChipText, { fontFamily: F.bodySemi, color: C.goldLight }]}>Gold Tier</Text>
+              <View style={[styles.heroChip, { borderColor: "rgba(212,168,83,0.45)", backgroundColor: C.amberBg }]}>
+                <MaterialCommunityIcons name="crown" size={11} color={C.amber} />
+                <Text style={[styles.heroChipText, { fontFamily: F.bodySemi, color: C.amber }]}>Gold Tier</Text>
               </View>
-              <View style={[styles.heroChip, { borderColor: "rgba(37,99,235,0.4)", backgroundColor: "rgba(37,99,235,0.12)" }]}>
-                <Ionicons name="star" size={11} color={C.blueLight} />
-                <Text style={[styles.heroChipText, { fontFamily: F.bodySemi, color: "#93C5FD" }]}>Top User</Text>
+              <View style={[styles.heroChip, { borderColor: "rgba(37,99,235,0.3)", backgroundColor: C.blueLight }]}>
+                <Ionicons name="star" size={11} color={C.blue} />
+                <Text style={[styles.heroChipText, { fontFamily: F.bodySemi, color: C.blue }]}>Top User</Text>
               </View>
             </View>
 
@@ -721,18 +572,9 @@ export default function ProfileScreen() {
               onPress={() => setShowEdit(true)}
               activeOpacity={0.85}
             >
-              <Ionicons name="create-outline" size={15} color={C.navy} style={{ marginRight: 6 }} />
+              <Ionicons name="create-outline" size={15} color="#FFF" style={{ marginRight: 6 }} />
               <Text style={[styles.heroEditBtnText, { fontFamily: F.bodySemi }]}>Edit Profile</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ── Stats Row ── */}
-        <View style={styles.statsSection}>
-          <View style={styles.statsRow}>
-            {STATS.map((s) => (
-              <StatCard key={s.label} stat={s} />
-            ))}
           </View>
         </View>
 
@@ -826,35 +668,38 @@ const styles = StyleSheet.create({
   },
   floatingNavBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: C.heroTop,
+    backgroundColor: "#FFFFFF",          // matches white hero on scroll
   },
   navBtn: {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(10,22,40,0.07)", // subtle dark tint on white
     alignItems: "center",
     justifyContent: "center",
   },
   navTitle: {
     fontSize: 18,
-    color: "#FFF",
+    color: C.navy,                        // dark text on white nav
     letterSpacing: -0.3,
   },
 
-  // Hero
+  // ── Hero — white background ───────────────────────────────────────────────
   hero: {
-    backgroundColor: C.heroTop,
+    backgroundColor: "#FFFFFF",           // ← changed to white
     paddingTop: Platform.OS === "ios" ? 110 : 90,
     paddingBottom: 32,
     overflow: "hidden",
+    borderBottomWidth: 1,
+    borderBottomColor: C.borderLight,     // subtle separator from bg
   },
+  // Decorative circles — muted tints that work on white
   heroCircle1: {
     position: "absolute",
     width: 320,
     height: 320,
     borderRadius: 160,
-    backgroundColor: "rgba(37,99,235,0.1)",
+    backgroundColor: "rgba(37,99,235,0.05)",
     top: -100,
     right: -100,
   },
@@ -863,7 +708,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(10,22,40,0.03)",
     bottom: -60,
     left: -60,
   },
@@ -872,7 +717,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(212,168,83,0.07)",
+    backgroundColor: "rgba(212,168,83,0.06)",
     top: 60,
     left: 30,
   },
@@ -880,14 +725,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 1,
     height: "100%",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(10,22,40,0.04)",
     left: width * 0.33,
   },
   heroGridLine2: {
     position: "absolute",
     width: 1,
     height: "100%",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "rgba(10,22,40,0.04)",
     left: width * 0.66,
   },
   heroContent: {
@@ -909,7 +754,7 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 1.5,
-    borderColor: "rgba(212,168,83,0.25)",
+    borderColor: "rgba(212,168,83,0.35)",
   },
   avatarRingInner: {
     position: "absolute",
@@ -917,7 +762,7 @@ const styles = StyleSheet.create({
     height: 82,
     borderRadius: 41,
     borderWidth: 2,
-    borderColor: "rgba(212,168,83,0.5)",
+    borderColor: "rgba(212,168,83,0.6)",
   },
   avatarCircle: {
     width: 72,
@@ -927,7 +772,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.8)",
+    shadowColor: C.blue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
   },
   avatarInitials: {
     fontSize: 26,
@@ -945,7 +795,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: C.heroTop,
+    borderColor: "#FFFFFF",              // white border to stand out on white bg
   },
   tierBadge: {
     position: "absolute",
@@ -959,17 +809,18 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     gap: 3,
     borderWidth: 1.5,
-    borderColor: C.heroTop,
+    borderColor: "#FFFFFF",             // white border instead of dark
   },
   tierBadgeText: {
     fontSize: 8,
-    color: C.heroTop,
+    color: "#FFFFFF",
     letterSpacing: 0.3,
   },
 
+  // Hero text — dark since bg is now white
   heroName: {
     fontSize: 26,
-    color: "#FFF",
+    color: C.navy,                       // ← dark
     letterSpacing: -0.6,
     marginBottom: 6,
     textAlign: "center",
@@ -982,7 +833,7 @@ const styles = StyleSheet.create({
   },
   heroMeta: {
     fontSize: 13,
-    color: "rgba(255,255,255,0.55)",
+    color: C.slate,                      // ← readable dark grey
   },
   heroChipsRow: {
     flexDirection: "row",
@@ -1007,24 +858,24 @@ const styles = StyleSheet.create({
   heroEditBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: C.navy,             // ← inverted: dark button on white hero
     borderRadius: 14,
     paddingHorizontal: 20,
     paddingVertical: 11,
-    shadowColor: "#000",
+    shadowColor: C.navy,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.18,
     shadowRadius: 10,
     elevation: 6,
   },
   heroEditBtnText: {
     fontSize: 14,
-    color: C.navy,
+    color: "#FFFFFF",                    // ← white text on dark button
   },
 
   // Stats
   statsSection: {
-    backgroundColor: C.heroTop,
+    backgroundColor: "#FFFFFF",          // ← matches white hero seamlessly
     paddingBottom: 0,
   },
   statsRow: {

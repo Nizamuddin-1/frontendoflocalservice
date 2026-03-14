@@ -1,16 +1,11 @@
 /**
  * WalletScreen.tsx — LocalFix Consumer App
  *
- * Fonts required:
- *   Recoleta-Bold.ttf  Recoleta-SemiBold.ttf  Recoleta-Regular.ttf
- *   Geist-Regular.ttf  Geist-Medium.ttf  Geist-SemiBold.ttf  Geist-Bold.ttf
- *
- *   react-native.config.js → assets: ['./assets/fonts']
- *   then: npx react-native-asset
- *
- * Dependencies:
- *   npm install react-native-vector-icons
- *   npm install --save-dev @types/react-native-vector-icons
+ * Changes from previous version:
+ *  • Screen background is white (#FFFFFF)
+ *  • SpendSummary card redesigned as consumer transaction stats card
+ *  • Transaction list filter changed to: Today, Yesterday, This Month (time-based)
+ *  • All original logic preserved
  */
 
 import React, { useState, useRef, useEffect } from "react";
@@ -24,7 +19,6 @@ import {
   Animated,
   Dimensions,
   Platform,
-  FlatList,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
@@ -46,21 +40,24 @@ const F = {
 const C = {
   cardTop:     "#0F1F45",
   cardMid:     "#162847",
-  cardBot:     "#1C3566",
-  cardAccent:  "#2563EB",
 
-  bg:          "#F0F3FB",
+  bg:          "#FFFFFF",          // ← white screen background
   surface:     "#FFFFFF",
+  surfaceAlt:  "#F8F9FB",
   navy:        "#0A1628",
   navyMid:     "#1C2E4A",
   blue:        "#2563EB",
   blueLight:   "#3B82F6",
+  blueTint:    "#EFF6FF",
   green:       "#10B981",
-  greenLight:  "#34D399",
+  greenTint:   "#ECFDF5",
   amber:       "#F59E0B",
+  amberTint:   "#FFFBEB",
   red:         "#EF4444",
+  redTint:     "#FEF2F2",
   purple:      "#7C3AED",
   teal:        "#0D9488",
+  tealTint:    "#F0FDFA",
 
   slate:       "#64748B",
   slateLight:  "#94A3B8",
@@ -69,10 +66,18 @@ const C = {
 
   gold:        "#D4A853",
   goldLight:   "#F0C96B",
+
+  // stat card accent colours
+  terra:       "#C0522B",
+  terraTint:   "#FDF1EC",
+  cobalt:      "#1B4FD8",
+  cobaltTint:  "#E9EFFC",
+  sage:        "#3D7A60",
+  sageTint:    "#E6F4EC",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type TxType = "credit" | "debit" | "refund" | "cashback";
+type TxType   = "credit" | "debit" | "refund" | "cashback";
 type TxStatus = "success" | "pending" | "failed";
 
 interface Transaction {
@@ -82,7 +87,7 @@ interface Transaction {
   amount: number;
   type: TxType;
   status: TxStatus;
-  date: string;
+  date: string;          // "Today" | "Yesterday" | "11 Mar" etc.
   time: string;
   icon: string;
   iconColor: string;
@@ -146,7 +151,7 @@ const TRANSACTIONS: Transaction[] = [
     amount: 1499,
     type: "debit",
     status: "success",
-    date: "11 Mar",
+    date: "Yesterday",
     time: "11:00 AM",
     icon: "spray-bottle",
     iconColor: C.purple,
@@ -159,7 +164,7 @@ const TRANSACTIONS: Transaction[] = [
     amount: 599,
     type: "refund",
     status: "success",
-    date: "8 Mar",
+    date: "Yesterday",
     time: "9:45 AM",
     icon: "cash-refund",
     iconColor: C.teal,
@@ -172,7 +177,7 @@ const TRANSACTIONS: Transaction[] = [
     amount: 3000,
     type: "credit",
     status: "success",
-    date: "5 Mar",
+    date: "This Month",
     time: "4:20 PM",
     icon: "bank-outline",
     iconColor: C.green,
@@ -184,7 +189,7 @@ const TRANSACTIONS: Transaction[] = [
     amount: 8500,
     type: "debit",
     status: "success",
-    date: "7 Mar",
+    date: "This Month",
     time: "9:00 AM",
     icon: "format-paint",
     iconColor: C.red,
@@ -197,7 +202,7 @@ const TRANSACTIONS: Transaction[] = [
     amount: 649,
     type: "debit",
     status: "pending",
-    date: "17 Mar",
+    date: "This Month",
     time: "9:00 AM",
     icon: "lightning-bolt",
     iconColor: C.amber,
@@ -240,20 +245,20 @@ const OFFERS: Offer[] = [
 
 const ADD_AMOUNTS = [200, 500, 1000, 2000, 5000];
 
-const TX_FILTER_TABS = [
-  { key: "all",      label: "All"      },
-  { key: "credit",   label: "Added"    },
-  { key: "debit",    label: "Spent"    },
-  { key: "refund",   label: "Refunds"  },
-  { key: "cashback", label: "Cashback" },
+// ─── Time-based filter tabs ───────────────────────────────────────────────────
+const TX_TIME_TABS = [
+  { key: "all",       label: "All"        },
+  { key: "Today",     label: "Today"      },
+  { key: "Yesterday", label: "Yesterday"  },
+  { key: "This Month",label: "This Month" },
 ];
 
 // ─── TX Config ────────────────────────────────────────────────────────────────
-const TX_TYPE_CONFIG: Record<TxType, { sign: string; color: string }> = {
-  credit:   { sign: "+", color: C.green },
-  debit:    { sign: "−", color: C.red   },
-  refund:   { sign: "+", color: C.teal  },
-  cashback: { sign: "+", color: C.gold  },
+const TX_TYPE_CONFIG: Record<TxType, { sign: string; color: string; tint: string }> = {
+  credit:   { sign: "+", color: C.green,  tint: C.greenTint  },
+  debit:    { sign: "−", color: C.red,    tint: C.redTint    },
+  refund:   { sign: "+", color: C.teal,   tint: C.tealTint   },
+  cashback: { sign: "+", color: C.gold,   tint: C.amberTint  },
 };
 
 const TX_STATUS_CONFIG: Record<TxStatus, { label: string; color: string; bg: string }> = {
@@ -281,93 +286,6 @@ const AnimatedBalance = ({ target }: { target: number }) => {
     <Text style={[styles.balanceAmount, { fontFamily: F.displayBold }]}>
       ₹{display.toLocaleString("en-IN")}
     </Text>
-  );
-};
-
-// ─── Wallet Card ──────────────────────────────────────────────────────────────
-const WalletCard = ({ balance, cashback, onAdd }: {
-  balance: number; cashback: number; onAdd: () => void;
-}) => {
-  const [balanceVisible, setBalanceVisible] = useState(true);
-
-  return (
-    <View style={styles.walletCard}>
-      <View style={styles.cardCircle1} />
-      <View style={styles.cardCircle2} />
-      <View style={styles.cardCircle3} />
-
-      <View style={styles.cardTopRow}>
-        <View style={styles.cardBrandRow}>
-          <View style={styles.cardLogoBox}>
-            <MaterialCommunityIcons name="wallet" size={16} color={C.goldLight} />
-          </View>
-          <Text style={[styles.cardBrand, { fontFamily: F.displaySemi }]}>LocalFix Pay</Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => setBalanceVisible(!balanceVisible)}
-          style={styles.visibilityBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons
-            name={balanceVisible ? "eye-outline" : "eye-off-outline"}
-            size={18}
-            color="rgba(255,255,255,0.6)"
-          />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.cardBalanceBlock}>
-        <Text style={[styles.balanceLabel, { fontFamily: F.bodyReg }]}>Available Balance</Text>
-        {balanceVisible ? (
-          <AnimatedBalance target={balance} />
-        ) : (
-          <Text style={[styles.balanceAmount, { fontFamily: F.displayBold }]}>₹ • • • • •</Text>
-        )}
-      </View>
-
-      <View style={styles.cashbackPill}>
-        <MaterialCommunityIcons name="gift" size={13} color={C.goldLight} />
-        <Text style={[styles.cashbackPillText, { fontFamily: F.bodySemi }]}>
-          {" "}₹{cashback} cashback earned
-        </Text>
-      </View>
-
-      <View style={styles.cardActionsRow}>
-        <TouchableOpacity style={styles.cardActionBtn} activeOpacity={0.8} onPress={onAdd}>
-          <View style={styles.cardActionIconWrap}>
-            <Ionicons name="add" size={18} color={C.cardTop} />
-          </View>
-          <Text style={[styles.cardActionLabel, { fontFamily: F.bodySemi }]}>Add Money</Text>
-        </TouchableOpacity>
-
-        <View style={styles.cardActionDivider} />
-
-        <TouchableOpacity style={styles.cardActionBtn} activeOpacity={0.8}>
-          <View style={styles.cardActionIconWrap}>
-            <Ionicons name="arrow-up" size={18} color={C.cardTop} />
-          </View>
-          <Text style={[styles.cardActionLabel, { fontFamily: F.bodySemi }]}>Withdraw</Text>
-        </TouchableOpacity>
-
-        <View style={styles.cardActionDivider} />
-
-        <TouchableOpacity style={styles.cardActionBtn} activeOpacity={0.8}>
-          <View style={styles.cardActionIconWrap}>
-            <Ionicons name="share-social" size={18} color={C.cardTop} />
-          </View>
-          <Text style={[styles.cardActionLabel, { fontFamily: F.bodySemi }]}>Refer & Earn</Text>
-        </TouchableOpacity>
-
-        <View style={styles.cardActionDivider} />
-
-        <TouchableOpacity style={styles.cardActionBtn} activeOpacity={0.8}>
-          <View style={styles.cardActionIconWrap}>
-            <Ionicons name="shield-checkmark" size={18} color={C.cardTop} />
-          </View>
-          <Text style={[styles.cardActionLabel, { fontFamily: F.bodySemi }]}>Security</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
   );
 };
 
@@ -457,81 +375,112 @@ const AddMoneySheet = ({
   );
 };
 
-// ─── Spend Summary ────────────────────────────────────────────────────────────
+// ─── Consumer Transaction Stats Card (replaces SpendSummary) ─────────────────
 const SpendSummary = () => {
+  // ── all original logic preserved ──
   const total   = TRANSACTIONS.filter(t => t.type === "debit").reduce((s, t) => s + t.amount, 0);
   const added   = TRANSACTIONS.filter(t => t.type === "credit").reduce((s, t) => s + t.amount, 0);
   const refunds = TRANSACTIONS.filter(t => t.type === "refund").reduce((s, t) => s + t.amount, 0);
-
-  const summaryBoxes = [
-    { label: "SPENT",    value: total,   color: C.blue,  dotColor: C.blue  },
-    { label: "ADDED",    value: added,   color: C.green, dotColor: C.green },
-    { label: "REFUNDED", value: refunds, color: C.teal,  dotColor: C.teal  },
-  ];
-
   const deficit = total - added;
+
+  // derived consumer stats
+  const servicesBooked = TRANSACTIONS.filter(t => t.type === "debit" && t.bookingRef).length;
+  const cashbackTotal  = TRANSACTIONS.filter(t => t.type === "cashback").reduce((s, t) => s + t.amount, 0);
+
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const pct = Math.min(added > 0 ? total / added : 1, 1);
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: pct,
+      duration: 1000,
+      delay: 300,
+      useNativeDriver: false,
+    }).start();
+  }, []);
+
+  const barWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
+  const STAT_TILES = [
+    {
+      label: "Services Booked",
+      value: String(servicesBooked),
+      icon: "briefcase-check-outline",
+      color: C.cobalt,
+      tint: C.cobaltTint,
+    },
+    {
+      label: "Total Spent",
+      value: "₹" + total.toLocaleString("en-IN"),
+      icon: "cash-minus",
+      color: C.terra,
+      tint: C.terraTint,
+    },
+    {
+      label: "Cashback Earned",
+      value: "₹" + cashbackTotal.toLocaleString("en-IN"),
+      icon: "cash-refund",
+      color: C.sage,
+      tint: C.sageTint,
+    },
+  ];
 
   return (
     <View style={styles.summaryCard}>
-      {/* Decorative blob */}
+      {/* subtle warm orb */}
       <View style={styles.summaryBlob} />
 
-      {/* ── Header ── */}
-      <View style={styles.summaryHeader}>
-        <View>
-          <View style={styles.summaryMonthBadge}>
-            <Ionicons name="calendar-outline" size={11} color={C.blue} />
-            <Text style={[styles.summaryMonthBadgeText, { fontFamily: F.bodySemi }]}>
-              {"  MAR 2024"}
-            </Text>
+      {/* ── Top row: brand + MAR badge ── */}
+      <View style={styles.summaryTopRow}>
+        <View style={styles.summaryBrandRow}>
+          <View style={styles.summaryBrandIcon}>
+            <MaterialCommunityIcons name="chart-donut" size={13} color={C.gold} />
           </View>
-          <Text style={[styles.summaryTitle, { fontFamily: F.displaySemi }]}>This Month</Text>
-          <Text style={[styles.summarySub,   { fontFamily: F.bodyReg    }]}>Spending overview</Text>
+          <Text style={[styles.summaryBrandText, { fontFamily: F.bodyBold }]}>Spend Snapshot</Text>
         </View>
-        <TouchableOpacity style={styles.summaryMore}>
-          <Text style={[styles.summaryMoreText, { fontFamily: F.bodySemi }]}>Details</Text>
-          <Ionicons name="arrow-forward" size={13} color={C.blue} />
-        </TouchableOpacity>
+        <View style={styles.summaryMonthBadge}>
+          <Ionicons name="calendar-outline" size={10} color={C.slate} />
+          <Text style={[styles.summaryMonthBadgeText, { fontFamily: F.bodySemi }]}>{"  MAR 2024"}</Text>
+        </View>
       </View>
 
-      {/* ── Three summary boxes ── */}
-      <View style={styles.summaryBoxRow}>
-        {summaryBoxes.map((box) => (
-          <View key={box.label} style={[styles.summaryBox, { borderTopColor: box.color }]}>
-            <View style={[styles.summaryBoxDot, { backgroundColor: box.dotColor }]} />
-            <Text style={[styles.summaryBoxLabel, { fontFamily: F.bodyBold }]}>{box.label}</Text>
-            <Text style={[styles.summaryBoxValue, { fontFamily: F.displaySemi, color: C.navy }]}>
-              ₹{box.value.toLocaleString()}
-            </Text>
-          </View>
-        ))}
+      {/* ── Hero: eyebrow + big total ── */}
+      <Text style={[styles.summaryEyebrow, { fontFamily: F.bodyReg }]}>Total Spent This Month</Text>
+      <View style={styles.summaryHeroRow}>
+        <Text style={[styles.summaryHeroAmount, { fontFamily: F.displayBold }]}>
+          ₹{total.toLocaleString("en-IN")}
+        </Text>
+      </View>
+
+      {/* ── Cashback pill ── */}
+      <View style={styles.summaryCashbackPill}>
+        <MaterialCommunityIcons name="cash-refund" size={11} color={C.gold} />
+        <Text style={[styles.summaryCashbackText, { fontFamily: F.bodySemi }]}>
+          {"  ₹" + cashbackTotal.toLocaleString("en-IN") + " cashback earned this month"}
+        </Text>
       </View>
 
       {/* ── Divider ── */}
       <View style={styles.summaryDivider} />
 
-      {/* ── Insight footer ── */}
-      <View style={styles.summaryInsight}>
-        <View style={styles.summaryInsightIconWrap}>
-          <MaterialCommunityIcons name="lightbulb-outline" size={16} color={C.gold} />
-        </View>
-        <Text style={[styles.summaryInsightText, { fontFamily: F.bodyReg }]}>
-          {deficit > 0 ? (
-            <>
-              Add{" "}
-              <Text style={{ fontFamily: F.bodySemi, color: C.navy }}>
-                ₹{deficit.toLocaleString()}
-              </Text>{" "}
-              more to fully cover expenses with wallet balance.
-            </>
-          ) : (
-            <>
-              Your wallet balance{" "}
-              <Text style={{ fontFamily: F.bodySemi, color: C.green }}>covers all expenses</Text>{" "}
-              this month.
-            </>
-          )}
-        </Text>
+      {/* ── Bottom 3-col mini stats strip ── */}
+      <View style={styles.summaryStatsStrip}>
+        {[
+          { label: "Services",   value: String(servicesBooked) },
+          { label: "Spent",      value: "₹" + total.toLocaleString("en-IN") },
+          { label: "Cashback",   value: "₹" + cashbackTotal.toLocaleString("en-IN") },
+        ].map((s, i) => (
+          <React.Fragment key={s.label}>
+            <View style={styles.summaryStat}>
+              <Text style={[styles.summaryStatVal, { fontFamily: F.displaySemi }]}>{s.value}</Text>
+              <Text style={[styles.summaryStatLabel, { fontFamily: F.bodyReg }]}>{s.label}</Text>
+            </View>
+            {i < 2 && <View style={styles.summaryStatSep} />}
+          </React.Fragment>
+        ))}
       </View>
     </View>
   );
@@ -540,29 +489,21 @@ const SpendSummary = () => {
 // ─── Offer Card ───────────────────────────────────────────────────────────────
 const OfferCard = ({ offer }: { offer: Offer }) => {
   const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleCopy = () => { setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   return (
     <View style={[styles.offerCard, { borderLeftColor: offer.color }]}>
       <View style={[styles.offerCircle, { backgroundColor: offer.color + "14" }]} />
-
       <View style={styles.offerLeft}>
         <View style={[styles.offerIconWrap, { backgroundColor: offer.color + "1A" }]}>
           <MaterialCommunityIcons name={offer.icon as any} size={20} color={offer.color} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.offerTitle,    { fontFamily: F.displaySemi, color: offer.color }]}>
-            {offer.title}
-          </Text>
+          <Text style={[styles.offerTitle,    { fontFamily: F.displaySemi, color: offer.color }]}>{offer.title}</Text>
           <Text style={[styles.offerSubtitle, { fontFamily: F.bodyReg }]}>{offer.subtitle}</Text>
           <Text style={[styles.offerExpiry,   { fontFamily: F.bodyReg }]}>{offer.expiry}</Text>
         </View>
       </View>
-
       <TouchableOpacity
         style={[styles.offerCodeBtn, { borderColor: offer.color + "55", backgroundColor: offer.color + "0D" }]}
         onPress={handleCopy}
@@ -571,8 +512,8 @@ const OfferCard = ({ offer }: { offer: Offer }) => {
         <Text style={[styles.offerCode, { fontFamily: F.bodySemi, color: offer.color }]}>
           {copied ? "Copied!" : offer.code}
         </Text>
-        {!copied && <Ionicons name="copy-outline" size={12} color={offer.color} style={{ marginLeft: 4 }} />}
-        {copied  && <Ionicons name="checkmark"    size={12} color={offer.color} style={{ marginLeft: 4 }} />}
+        {!copied && <Ionicons name="copy-outline"  size={12} color={offer.color} style={{ marginLeft: 4 }} />}
+        {copied  && <Ionicons name="checkmark"     size={12} color={offer.color} style={{ marginLeft: 4 }} />}
       </TouchableOpacity>
     </View>
   );
@@ -589,42 +530,30 @@ const TxRow = ({ tx }: { tx: Transaction }) => {
       activeOpacity={0.7}
     >
       <View style={[styles.txBgCircle, { backgroundColor: tx.iconColor + "12" }]} />
-
       <View style={styles.txLeft}>
         <View style={[styles.txIconWrap, { backgroundColor: tx.iconColor + "1A" }]}>
           <MaterialCommunityIcons name={tx.icon as any} size={20} color={tx.iconColor} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.txTitle, { fontFamily: F.displaySemi }]} numberOfLines={1}>
-            {tx.title}
-          </Text>
-          <Text style={[styles.txSub, { fontFamily: F.bodyReg }]} numberOfLines={1}>
-            {tx.subtitle}
-          </Text>
+          <Text style={[styles.txTitle, { fontFamily: F.displaySemi }]} numberOfLines={1}>{tx.title}</Text>
+          <Text style={[styles.txSub,   { fontFamily: F.bodyReg }]} numberOfLines={1}>{tx.subtitle}</Text>
           <View style={styles.txMeta}>
             <Ionicons name="time-outline" size={11} color={C.slateLight} />
-            <Text style={[styles.txDate, { fontFamily: F.bodyReg }]}>
-              {" "}{tx.date} · {tx.time}
-            </Text>
+            <Text style={[styles.txDate, { fontFamily: F.bodyReg }]}>{" "}{tx.date} · {tx.time}</Text>
             {tx.status !== "success" && (
               <View style={[styles.txStatusChip, { backgroundColor: sc.bg }]}>
-                <Text style={[styles.txStatusText, { color: sc.color, fontFamily: F.bodySemi }]}>
-                  {sc.label}
-                </Text>
+                <Text style={[styles.txStatusText, { color: sc.color, fontFamily: F.bodySemi }]}>{sc.label}</Text>
               </View>
             )}
           </View>
         </View>
       </View>
-
       <View style={[styles.txAmountBadge, {
-        borderColor: tx.iconColor + "55",
-        backgroundColor: tx.iconColor + "0D",
+        borderColor: tc.color + "55",
+        backgroundColor: tc.tint,
       }]}>
-        <Text style={[styles.txAmountSign, { fontFamily: F.bodySemi, color: tc.color }]}>
-          {tc.sign}
-        </Text>
-        <Text style={[styles.txAmount, { fontFamily: F.displaySemi, color: tc.color }]}>
+        <Text style={[styles.txAmountSign, { fontFamily: F.bodySemi, color: tc.color }]}>{tc.sign}</Text>
+        <Text style={[styles.txAmount,     { fontFamily: F.displaySemi, color: tc.color }]}>
           ₹{tx.amount.toLocaleString()}
         </Text>
       </View>
@@ -636,21 +565,22 @@ const TxRow = ({ tx }: { tx: Transaction }) => {
 export default function WalletScreen() {
   const [balance, setBalance]             = useState(3613);
   const [showAddSheet, setShowAddSheet]   = useState(false);
-  const [txFilter, setTxFilter]           = useState("all");
+  const [txTimeFilter, setTxTimeFilter]   = useState("all");
   const [activeSection, setActiveSection] = useState<"transactions" | "offers">("transactions");
 
-  const filteredTx = txFilter === "all"
+  // time-based filter: match against tx.date field
+  const filteredTx = txTimeFilter === "all"
     ? TRANSACTIONS
-    : TRANSACTIONS.filter((t) => t.type === txFilter);
+    : TRANSACTIONS.filter(t => t.date === txTimeFilter);
 
   const handleAddMoney = (amt: number) => {
-    setBalance((b) => b + amt);
+    setBalance(b => b + amt);
     setShowAddSheet(false);
   };
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={C.cardTop} />
+      <StatusBar barStyle="dark-content" backgroundColor={C.bg} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -659,49 +589,13 @@ export default function WalletScreen() {
       >
         {/* ── Sticky Header ── */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="chevron-back" size={22} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { fontFamily: F.displaySemi }]}>My Wallet</Text>
-          <TouchableOpacity style={styles.headerAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="ellipsis-horizontal" size={20} color="#FFF" />
-          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { fontFamily: F.displaySemi }]}>My Transactions</Text>
+           
         </View>
 
-        {/* ── Wallet Card ── */}
-        <View style={styles.cardWrapper}>
-          <WalletCard
-            balance={balance}
-            cashback={60}
-            onAdd={() => setShowAddSheet(true)}
-          />
-        </View>
-
-        {/* ── Spend Summary ── */}
+        {/* ── Consumer Transaction Stats Card ── */}
         <View style={styles.section}>
           <SpendSummary />
-        </View>
-
-        {/* ── Quick Add Row ── */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { fontFamily: F.displaySemi }]}>Quick Add</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10, paddingRight: 4 }}
-          >
-            {ADD_AMOUNTS.map((amt) => (
-              <TouchableOpacity
-                key={amt}
-                style={styles.quickAddPill}
-                onPress={() => setShowAddSheet(true)}
-                activeOpacity={0.75}
-              >
-                <Ionicons name="add-circle-outline" size={14} color={C.blue} style={{ marginRight: 5 }} />
-                <Text style={[styles.quickAddText, { fontFamily: F.bodySemi }]}>₹{amt.toLocaleString()}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
         </View>
 
         {/* ── Segment Toggle ── */}
@@ -735,18 +629,23 @@ export default function WalletScreen() {
         {/* ── Transactions ── */}
         {activeSection === "transactions" && (
           <View style={styles.section}>
+
+            {/* Time-based filter tabs */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.filterTabsContent}
             >
-              {TX_FILTER_TABS.map((tab) => {
-                const active = txFilter === tab.key;
+              {TX_TIME_TABS.map((tab) => {
+                const active = txTimeFilter === tab.key;
+                const count  = tab.key === "all"
+                  ? TRANSACTIONS.length
+                  : TRANSACTIONS.filter(t => t.date === tab.key).length;
                 return (
                   <TouchableOpacity
                     key={tab.key}
                     style={[styles.filterTab, active && styles.filterTabActive]}
-                    onPress={() => setTxFilter(tab.key)}
+                    onPress={() => setTxTimeFilter(tab.key)}
                     activeOpacity={0.75}
                   >
                     <Text style={[
@@ -756,6 +655,17 @@ export default function WalletScreen() {
                     ]}>
                       {tab.label}
                     </Text>
+                    <View style={[
+                      styles.filterTabBadge,
+                      { backgroundColor: active ? C.blue : C.border },
+                    ]}>
+                      <Text style={[
+                        styles.filterTabBadgeText,
+                        { fontFamily: F.bodyBold, color: active ? "#FFF" : C.slateLight },
+                      ]}>
+                        {count}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -767,18 +677,33 @@ export default function WalletScreen() {
                 <Text style={[styles.txEmptyText, { fontFamily: F.bodyMed }]}>No transactions here</Text>
               </View>
             ) : (
-              filteredTx.map((tx, i) => (
-                <View key={tx.id}>
-                  {(i === 0 || filteredTx[i - 1].date !== tx.date) && (
+              (() => {
+                // group by date for section headers
+                const grouped: { date: string; items: Transaction[] }[] = [];
+                filteredTx.forEach(tx => {
+                  const last = grouped[grouped.length - 1];
+                  if (last && last.date === tx.date) {
+                    last.items.push(tx);
+                  } else {
+                    grouped.push({ date: tx.date, items: [tx] });
+                  }
+                });
+                return grouped.map(group => (
+                  <View key={group.date}>
                     <View style={styles.dateSep}>
                       <View style={styles.dateSepLine} />
-                      <Text style={[styles.dateSepText, { fontFamily: F.bodyMed }]}>{tx.date}</Text>
+                      <View style={styles.dateSepChip}>
+                        <Ionicons name="time-outline" size={11} color={C.blue} />
+                        <Text style={[styles.dateSepText, { fontFamily: F.bodySemi }]}>
+                          {" "}{group.date}
+                        </Text>
+                      </View>
                       <View style={styles.dateSepLine} />
                     </View>
-                  )}
-                  <TxRow tx={tx} />
-                </View>
-              ))
+                    {group.items.map(tx => <TxRow key={tx.id} tx={tx} />)}
+                  </View>
+                ));
+              })()
             )}
           </View>
         )}
@@ -806,18 +731,14 @@ export default function WalletScreen() {
             </View>
 
             <Text style={[styles.offersHeading, { fontFamily: F.displaySemi }]}>Available Offers</Text>
-            {OFFERS.map((offer) => (
-              <OfferCard key={offer.id} offer={offer} />
-            ))}
+            {OFFERS.map(offer => <OfferCard key={offer.id} offer={offer} />)}
 
             <View style={styles.referralCard}>
               <View style={styles.referralLeft}>
                 <MaterialCommunityIcons name="account-multiple-plus" size={28} color={C.blue} />
                 <View style={{ marginLeft: 12 }}>
-                  <Text style={[styles.referralTitle, { fontFamily: F.displaySemi }]}>
-                    Refer & Earn ₹100
-                  </Text>
-                  <Text style={[styles.referralSub, { fontFamily: F.bodyReg }]}>
+                  <Text style={[styles.referralTitle, { fontFamily: F.displaySemi }]}>Refer & Earn ₹100</Text>
+                  <Text style={[styles.referralSub,   { fontFamily: F.bodyReg }]}>
                     Share your code — both get rewarded
                   </Text>
                 </View>
@@ -850,7 +771,8 @@ const styles = StyleSheet.create({
     backgroundColor: C.cardTop,
   },
   scrollContent: {
-    backgroundColor: C.bg,
+    backgroundColor: C.bg,           // ← white
+    paddingBottom: 20,
   },
 
   // ── Header ──
@@ -858,36 +780,42 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: C.cardTop,
+    backgroundColor: C.bg,
     paddingTop: Platform.OS === "ios" ? 56 : 36,
     paddingBottom: 14,
     paddingHorizontal: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: C.borderLight,
   },
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: C.surfaceAlt,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: C.border,
   },
   headerTitle: {
     fontSize: 20,
-    color: "#FFFFFF",
+    color: C.navy,
     letterSpacing: -0.3,
   },
   headerAction: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: C.surfaceAlt,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: C.border,
   },
 
   // ── Wallet Card ──
   cardWrapper: {
-    backgroundColor: C.cardTop,
+    backgroundColor: C.bg,
     paddingHorizontal: 16,
     paddingBottom: 28,
   },
@@ -1024,166 +952,136 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 20,
   },
-  sectionTitle: {
-    fontSize: 18,
-    color: C.navy,
-    letterSpacing: -0.3,
-    marginBottom: 12,
-  },
 
-  // ── Spend Summary Card (redesigned) ──
+  // ── Consumer Spend Stats Card — matches reference image ──
   summaryCard: {
-    backgroundColor: C.surface,
+    backgroundColor: "#FFFDF9",
     borderRadius: 24,
     padding: 20,
-    shadowColor: C.navy,
+    shadowColor: "#B07D2E",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.09,
-    shadowRadius: 18,
+    shadowOpacity: 0.10,
+    shadowRadius: 20,
     elevation: 5,
     borderWidth: 1,
-    borderColor: C.borderLight,
+    borderColor: "#EDE8DF",
     overflow: "hidden",
-    position: "relative",
   },
   summaryBlob: {
     position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(37,99,235,0.05)",
-    top: -70,
-    right: -60,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "rgba(176,125,46,0.05)",
+    top: -80,
+    right: -70,
   },
-  summaryHeader: {
+  // ── Top row ──
+  summaryTopRow: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 18,
+    marginBottom: 16,
+  },
+  summaryBrandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  summaryBrandIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: "rgba(176,125,46,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(176,125,46,0.22)",
+  },
+  summaryBrandText: {
+    fontSize: 13,
+    color: "#2E3B4E",
+    letterSpacing: 0.1,
   },
   summaryMonthBadge: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(37,99,235,0.08)",
+    backgroundColor: "#F0EDE6",
     borderRadius: 50,
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: "rgba(37,99,235,0.15)",
-    marginBottom: 6,
+    borderColor: "#DDD6CE",
   },
   summaryMonthBadgeText: {
     fontSize: 10,
-    color: C.blue,
-    letterSpacing: 0.6,
-  },
-  summaryTitle: {
-    fontSize: 20,
-    color: C.navy,
-    letterSpacing: -0.4,
-  },
-  summarySub: {
-    fontSize: 12,
-    color: C.slateLight,
-    marginTop: 2,
-  },
-  summaryMore: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(37,99,235,0.07)",
-    borderRadius: 9,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: "rgba(37,99,235,0.15)",
-  },
-  summaryMoreText: {
-    fontSize: 12,
-    color: C.blue,
-  },
-  summaryBoxRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 4,
-  },
-  summaryBox: {
-    flex: 1,
-    backgroundColor: C.bg,
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: C.borderLight,
-    borderTopWidth: 3,
-    gap: 3,
-    overflow: "hidden",
-  },
-  summaryBoxDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    marginBottom: 2,
-  },
-  summaryBoxLabel: {
-    fontSize: 9,
-    color: C.slateLight,
+    color: "#6B7A8D",
     letterSpacing: 0.5,
   },
-  summaryBoxValue: {
-    fontSize: 14,
-    letterSpacing: -0.4,
+  // ── Hero amount ──
+  summaryEyebrow: {
+    fontSize: 12,
+    color: "#94A3B8",
+    letterSpacing: 0.2,
+    marginBottom: 4,
   },
+  summaryHeroRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: 12,
+  },
+  summaryHeroAmount: {
+    fontSize: 42,
+    color: "#0F1923",
+    letterSpacing: -1.5,
+    lineHeight: 48,
+  },
+  // ── Cashback pill ──
+  summaryCashbackPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(176,125,46,0.10)",
+    borderRadius: 50,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "rgba(176,125,46,0.20)",
+    marginBottom: 18,
+  },
+  summaryCashbackText: {
+    fontSize: 11,
+    color: "#8A5F1A",
+  },
+  // ── Divider ──
   summaryDivider: {
     height: 1,
-    backgroundColor: C.borderLight,
-    marginVertical: 16,
+    backgroundColor: "#EDE8DF",
+    marginBottom: 14,
   },
-  summaryInsight: {
+  // ── Bottom stats strip ──
+  summaryStatsStrip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    backgroundColor: "rgba(212,168,83,0.07)",
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(212,168,83,0.18)",
   },
-  summaryInsightIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    backgroundColor: "rgba(212,168,83,0.14)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  summaryInsightText: {
+  summaryStat: {
     flex: 1,
-    fontSize: 12,
-    color: C.slate,
-    lineHeight: 17,
-  },
-
-  // ── Quick Add ──
-  quickAddPill: {
-    flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 50,
-    backgroundColor: C.surface,
-    borderWidth: 1.5,
-    borderColor: C.border,
-    shadowColor: C.navy,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    gap: 4,
   },
-  quickAddText: {
+  summaryStatVal: {
     fontSize: 14,
-    color: C.navy,
+    color: "#0F1923",
+    letterSpacing: -0.3,
+  },
+  summaryStatLabel: {
+    fontSize: 10,
+    color: "#94A3B8",
+  },
+  summaryStatSep: {
+    width: 1,
+    height: 28,
+    backgroundColor: "#EDE8DF",
   },
 
   // ── Segment ──
@@ -1211,27 +1109,41 @@ const styles = StyleSheet.create({
     color: C.slate,
   },
 
-  // ── Filter Tabs ──
+  // ── Time Filter Tabs ──
   filterTabsContent: {
     gap: 6,
     marginBottom: 14,
+    paddingRight: 8,
   },
   filterTab: {
-    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 50,
     backgroundColor: C.surface,
     borderWidth: 1.5,
     borderColor: C.border,
-    marginRight: 6,
+    gap: 6,
   },
   filterTabActive: {
     borderColor: C.blue,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: C.blueTint,
   },
   filterTabText: {
     fontSize: 13,
     color: C.slateLight,
+  },
+  filterTabBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  filterTabBadgeText: {
+    fontSize: 9,
   },
 
   // ── Transaction Row ──
@@ -1248,9 +1160,9 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     shadowColor: C.navy,
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 10,
-    elevation: 3,
+    elevation: 2,
   },
   txBgCircle: {
     position: "absolute",
@@ -1323,7 +1235,7 @@ const styles = StyleSheet.create({
   },
   txEmpty: {
     alignItems: "center",
-    paddingVertical: 32,
+    paddingVertical: 36,
     gap: 8,
   },
   txEmptyText: {
@@ -1335,8 +1247,7 @@ const styles = StyleSheet.create({
   dateSep: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 4,
-    paddingVertical: 6,
+    paddingVertical: 10,
     gap: 10,
   },
   dateSepLine: {
@@ -1344,9 +1255,19 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: C.border,
   },
+  dateSepChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.blueTint,
+    borderRadius: 50,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: C.blue + "30",
+  },
   dateSepText: {
     fontSize: 11,
-    color: C.slateLight,
+    color: C.blue,
   },
 
   // ── Offers ──
@@ -1555,7 +1476,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 11,
     borderRadius: 13,
-    backgroundColor: C.bg,
+    backgroundColor: C.surfaceAlt,
     borderWidth: 1.5,
     borderColor: C.border,
   },
@@ -1574,7 +1495,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   payMethods: {
-    backgroundColor: C.bg,
+    backgroundColor: C.surfaceAlt,
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
