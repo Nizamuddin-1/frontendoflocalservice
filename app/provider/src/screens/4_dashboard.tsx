@@ -128,7 +128,7 @@ export default function DashboardScreen({ navigation }: Props) {
               {/* Earnings card */}
               <View style={s.earnCard}>
                 <View>
-                  <Text style={s.earnLbl}>This Month's Earnings</Text>
+                  <Text style={s.earnLbl}>This Month&apos;s Earnings</Text>
                   <Text style={s.earnAmt}>₹{stats.monthEarnings.toLocaleString()}</Text>
                   <View style={s.growthRow}>
                     <View style={s.growthPill}>

@@ -87,7 +87,7 @@ export default function HomeScreen({ navigation }: Props) {
           {/* Status card */}
           <View style={s.statusCard}>
             <View>
-              <Text style={s.statusCardLbl}>Today's Status</Text>
+              <Text style={s.statusCardLbl}>Today&apos;s Status</Text>
               <Text style={s.statusCardVal}>Available for Jobs</Text>
             </View>
             <View style={s.statusToggle}>
