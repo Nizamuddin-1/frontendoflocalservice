@@ -13,6 +13,7 @@ import { RouteProp }           from '@react-navigation/native';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { PrimaryButton } from '../components';
 import { JOB_PAYOUT } from '../hooks/mockData';
+import { useAppSelector } from '@/src/redux/store';
 import type { RootStackParamList, PayoutRow } from '../types';
 
 type NavProp    = StackNavigationProp<RootStackParamList, 'JobComplete'>;

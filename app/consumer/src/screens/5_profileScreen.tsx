@@ -10,7 +10,7 @@
  *   • Mock data                                       → @/src/services/mock
  */
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -32,13 +32,23 @@ import {
   EditProfileModal,
 } from "@/src/components/profile";
 import type { ToggleKey } from "@/src/components/profile";
-import { USER, MENU_SECTIONS } from "@/src/services/mock";
+import { MENU_SECTIONS } from "@/src/services/mock";
+import { useAppSelector, useAppDispatch } from "@/src/redux/store";
+import { fetchProfile } from "@/src/redux/actions/appActions";
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((s) => s.consumer.profile);
   const [toggles, setToggles] = useState(DEFAULT_TOGGLES);
   const [showEdit, setShowEdit] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!user) {
+      dispatch(fetchProfile());
+    }
+  }, [dispatch, user]);
 
   const handleToggle = (key: ToggleKey) => {
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -93,17 +103,17 @@ export default function ProfileScreen() {
 
           {/* Avatar */}
           <View style={styles.heroContent}>
-            <HeroAvatar name={USER.name} tier={USER.tier} />
+            <HeroAvatar name={user?.name ?? "User"} tier={user?.tier ?? ""} />
 
             {/* Name & Info */}
-            <Text style={[styles.heroName, { fontFamily: F.displayBold }]}>{USER.name}</Text>
+            <Text style={[styles.heroName, { fontFamily: F.displayBold }]}>{user?.name ?? "User"}</Text>
             <View style={styles.heroMetaRow}>
               <Ionicons name="location-outline" size={13} color={C.slate} />
-              <Text style={[styles.heroMeta, { fontFamily: F.bodyReg }]}>{USER.location}</Text>
+              <Text style={[styles.heroMeta, { fontFamily: F.bodyReg }]}>{user?.location ?? ""}</Text>
             </View>
             <View style={styles.heroMetaRow}>
               <Ionicons name="calendar-outline" size={13} color={C.slate} />
-              <Text style={[styles.heroMeta, { fontFamily: F.bodyReg }]}>Member since {USER.memberSince}</Text>
+              <Text style={[styles.heroMeta, { fontFamily: F.bodyReg }]}>Member since {user?.memberSince ?? ""}</Text>
             </View>
 
             {/* Verification chips */}
@@ -136,7 +146,7 @@ export default function ProfileScreen() {
 
         {/* ── Loyalty Bar ── */}
         <View style={styles.section}>
-          <LoyaltyBar points={USER.loyaltyPoints} />
+          <LoyaltyBar points={user?.loyaltyPoints ?? 0} />
         </View>
 
         {/* ── Quick Info Card ── */}
@@ -144,8 +154,8 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionLabel, { fontFamily: F.bodySemi }]}>Contact Details</Text>
           <View style={styles.infoCard}>
             {[
-              { icon: "mail-outline",   label: "Email",  value: USER.email  },
-              { icon: "call-outline",   label: "Phone",  value: USER.phone  },
+              { icon: "mail-outline",   label: "Email",  value: user?.email ?? "" },
+              { icon: "call-outline",   label: "Phone",  value: user?.phone ?? "" },
             ].map((row, i, arr) => (
               <React.Fragment key={row.label}>
                 <View style={styles.infoRow}>

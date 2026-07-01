@@ -12,6 +12,7 @@ import {
 import type {
   StatCardProps, StatusChipProps, SectionHeaderProps,
   InfoRowProps, MapPreviewProps, PressableScaleProps,
+  BookingStatus,
 } from '../types';
 
 // ── Pressable scale ───────────────────────────
@@ -50,7 +51,7 @@ const sC = StyleSheet.create({
 
 // ── Status Chip ───────────────────────────────
 export const StatusChip: React.FC<StatusChipProps> = ({ type, label }) => {
-  const cs = ChipColors[type] ?? ChipColors.new;
+  const cs = ChipColors[type as BookingStatus] ?? ChipColors.new;
   const display = label.charAt(0).toUpperCase() + label.slice(1);
   return (
     <View style={[ch.chip, { backgroundColor: cs.bg }]}>

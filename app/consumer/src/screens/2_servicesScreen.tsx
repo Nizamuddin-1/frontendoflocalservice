@@ -32,14 +32,15 @@ import {
   FilterSheet,
   BookingSheet,
 } from "@/src/components/services";
-import { CATEGORIES, SERVICES, SORT_OPTIONS } from "@/src/services/mock";
+import { SORT_OPTIONS } from "@/src/services/mock";
+import { useAppSelector, useAppDispatch } from "@/src/redux/store";
+import { servicesSetCategory, servicesSetSearch, servicesSetSort, servicesSetSelected } from "@/src/redux/actions/appActions";
 import type { Service, SortMode } from "@/src/types";
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ServicesScreen() {
-  const [activeCat,    setActiveCat]    = useState("all");
-  const [query,        setQuery]        = useState("");
-  const [sortMode,     setSortMode]     = useState<SortMode>("popular");
+  const dispatch = useAppDispatch();
+  const { list: services, categories, activeCategory, searchQuery, sortMode } = useAppSelector((s) => s.consumer.services);
   const [showFilter,   setShowFilter]   = useState(false);
   const [searchFocus,  setSearchFocus]  = useState(false);
   const [bookingService, setBookingService] = useState<Service | null>(null);
@@ -56,14 +57,13 @@ export default function ServicesScreen() {
 
   const handleCloseBooking = useCallback(() => {
     setShowBooking(false);
-    // slight delay before clearing so animation plays out
     setTimeout(() => setBookingService(null), 320);
   }, []);
 
-  const filtered = SERVICES
+  const filtered = services
     .filter((s) => {
-      const catOk  = activeCat === "all" || s.categoryId === activeCat;
-      const termOk = s.name.toLowerCase().includes(query.toLowerCase()) || s.provider.toLowerCase().includes(query.toLowerCase());
+      const catOk  = activeCategory === "all" || s.categoryId === activeCategory;
+      const termOk = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.provider.toLowerCase().includes(searchQuery.toLowerCase());
       return catOk && termOk;
     })
     .sort((a, b) => {
@@ -122,15 +122,15 @@ export default function ServicesScreen() {
               style={[styles.searchInput, { fontFamily: F.bodyMed }]}
               placeholder="Search services or providers…"
               placeholderTextColor={C.inkFaint}
-              value={query}
-              onChangeText={setQuery}
+              value={searchQuery}
+              onChangeText={(text) => dispatch(servicesSetSearch(text))}
               onFocus={() => setSearchFocus(true)}
               onBlur={() => setSearchFocus(false)}
             />
-            {query.length > 0 && (
+            {searchQuery.length > 0 && (
               <TouchableOpacity
                 style={styles.searchClearBtn}
-                onPress={() => setQuery("")}
+                onPress={() => dispatch(servicesSetSearch(""))}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons name="close-circle" size={16} color={C.inkFaint} />
@@ -149,8 +149,8 @@ export default function ServicesScreen() {
 
         {/* Row 4: Category chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catsRow}>
-          {CATEGORIES.map((cat) => (
-            <CatPill key={cat.id} cat={cat} active={activeCat === cat.id} onPress={() => setActiveCat(cat.id)} />
+          {categories.map((cat) => (
+            <CatPill key={cat.id} cat={cat} active={activeCategory === cat.id} onPress={() => dispatch(servicesSetCategory(cat.id))} />
           ))}
         </ScrollView>
       </Animated.View>
@@ -162,7 +162,7 @@ export default function ServicesScreen() {
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
       >
-        {activeCat === "all" && !query && <TrustStrip />}
+        {activeCategory === "all" && !searchQuery && <TrustStrip />}
 
         {/* Results bar */}
         <View style={styles.resultsBar}>
@@ -174,7 +174,7 @@ export default function ServicesScreen() {
             {SORT_OPTIONS.map((opt) => {
               const active = sortMode === opt.key;
               return (
-                <TouchableOpacity key={opt.key} style={[styles.sortChip, active && styles.sortChipActive]} onPress={() => setSortMode(opt.key)} activeOpacity={0.75}>
+                <TouchableOpacity key={opt.key} style={[styles.sortChip, active && styles.sortChipActive]} onPress={() => dispatch(servicesSetSort(opt.key))} activeOpacity={0.75}>
                   <Ionicons name={opt.icon as any} size={11} color={active ? "#FFF" : C.inkLight} style={{ marginRight: 4 }} />
                   <Text style={[styles.sortChipText, { fontFamily: active ? F.bodySemi : F.bodyMed }, active && { color: "#FFF" }]}>{opt.label}</Text>
                 </TouchableOpacity>
@@ -191,7 +191,7 @@ export default function ServicesScreen() {
             </View>
             <Text style={[styles.emptyTitle, { fontFamily: F.displaySemi }]}>Nothing here</Text>
             <Text style={[styles.emptyBody,  { fontFamily: F.bodyReg   }]}>Try a different category or clear your search</Text>
-            <TouchableOpacity style={styles.emptyReset} onPress={() => { setActiveCat("all"); setQuery(""); }} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.emptyReset} onPress={() => { dispatch(servicesSetCategory("all")); dispatch(servicesSetSearch("")); }} activeOpacity={0.8}>
               <Ionicons name="refresh-outline" size={14} color={C.terra} style={{ marginRight: 6 }} />
               <Text style={[styles.emptyResetText, { fontFamily: F.bodySemi }]}>Clear filters</Text>
             </TouchableOpacity>

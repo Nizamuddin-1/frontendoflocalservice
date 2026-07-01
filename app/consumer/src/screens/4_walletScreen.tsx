@@ -10,7 +10,7 @@
  *   • Types                        → @/src/types
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -30,23 +30,32 @@ import {
   TxRow,
   AddMoneySheet,
 } from "@/src/components/wallet";
-import { TRANSACTIONS, OFFERS, TX_TIME_TABS } from "@/src/services/mock";
+import { OFFERS, TX_TIME_TABS } from "@/src/services/mock";
+import { useAppSelector, useAppDispatch } from "@/src/redux/store";
+import { fetchWallet, addMoney } from "@/src/redux/actions/appActions";
 import type { Transaction } from "@/src/types";
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function WalletScreen() {
-  const [balance, setBalance]             = useState(3613);
+  const dispatch = useAppDispatch();
+  const { balance, transactions, isLoading } = useAppSelector((s) => s.consumer.wallet);
   const [showAddSheet, setShowAddSheet]   = useState(false);
   const [txTimeFilter, setTxTimeFilter]   = useState("all");
   const [activeSection, setActiveSection] = useState<"transactions" | "offers">("transactions");
 
+  useEffect(() => {
+    if (transactions.length === 0) {
+      dispatch(fetchWallet());
+    }
+  }, [dispatch, transactions.length]);
+
   // time-based filter: match against tx.date field
   const filteredTx = txTimeFilter === "all"
-    ? TRANSACTIONS
-    : TRANSACTIONS.filter(t => t.date === txTimeFilter);
+    ? transactions
+    : transactions.filter(t => t.date === txTimeFilter);
 
   const handleAddMoney = (amt: number) => {
-    setBalance(b => b + amt);
+    dispatch(addMoney(amt));
     setShowAddSheet(false);
   };
 
@@ -111,8 +120,8 @@ export default function WalletScreen() {
               {TX_TIME_TABS.map((tab) => {
                 const active = txTimeFilter === tab.key;
                 const count  = tab.key === "all"
-                  ? TRANSACTIONS.length
-                  : TRANSACTIONS.filter(t => t.date === tab.key).length;
+                  ? transactions.length
+                  : transactions.filter(t => t.date === tab.key).length;
                 return (
                   <TouchableOpacity
                     key={tab.key}

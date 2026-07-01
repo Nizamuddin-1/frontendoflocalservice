@@ -10,7 +10,7 @@ import {
 import { Feather } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
-import { BOOKINGS, PROVIDER_PROFILE } from '../hooks/mockData';
+import { useAppSelector, useAppDispatch } from '@/src/redux/store';
 import type { RootStackParamList } from '../types';
 
 type HomeNavProp = StackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -19,6 +19,11 @@ interface Props { navigation: HomeNavProp }
 const ACCENT = '#6366F1';
 
 export default function HomeScreen({ navigation }: Props) {
+  const dispatch = useAppDispatch();
+  const { providerBookings, profile } = useAppSelector((s) => s.provider);
+  const BOOKINGS = providerBookings.list;
+  const PROVIDER_PROFILE = profile.data;
+
   // ── Entrance animations ──────────────────────
   const heroFade  = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(28)).current;
@@ -42,10 +47,19 @@ export default function HomeScreen({ navigation }: Props) {
     return () => pulseAnim.stop();
   }, []);
 
-  const newBooking = BOOKINGS[0];
+  const newBooking = BOOKINGS[0] ?? {
+    id: '',
+    serviceType: '',
+    services: [{ quantity: 0 }],
+    customer: { name: '' },
+    location: { distanceKm: 0 },
+    totalAmount: 0,
+  };
 
   const handleViewBooking = useCallback(() => {
-    navigation.push('BookingDetails', { bookingId: newBooking.id });
+    if (newBooking.id) {
+      navigation.push('BookingDetails', { bookingId: newBooking.id });
+    }
   }, [navigation, newBooking.id]);
 
   return (
@@ -65,7 +79,7 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={s.heroTop}>
             <View>
               <Text style={s.greeting}>Good morning 👋</Text>
-              <Text style={s.heroName}>{PROVIDER_PROFILE.name}</Text>
+              <Text style={s.heroName}>{PROVIDER_PROFILE?.name ?? ''}</Text>
             </View>
             <View style={s.heroActions}>
               {/* Online badge */}
@@ -122,17 +136,17 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
             <View style={s.cardBodyInfo}>
               <Text style={s.cardTitle}>
-                {newBooking.serviceType} — {newBooking.services[0].quantity} Units
+                {newBooking.serviceType} — {newBooking.services[0]?.quantity ?? 0} Units
               </Text>
               <View style={s.metaRow}>
                 <View style={s.metaItem}>
                   <Feather name="user" size={12} color="#64748B" />
-                  <Text style={s.metaTxt}>{newBooking.customer.name}</Text>
+                  <Text style={s.metaTxt}>{newBooking.customer?.name ?? ''}</Text>
                 </View>
                 <View style={s.metaDivider} />
                 <View style={s.metaItem}>
                   <Feather name="map-pin" size={12} color="#64748B" />
-                  <Text style={s.metaTxt}>{newBooking.location.distanceKm} km away</Text>
+                  <Text style={s.metaTxt}>{newBooking.location?.distanceKm ?? 0} km away</Text>
                 </View>
               </View>
             </View>
@@ -145,7 +159,7 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={s.cardFooter}>
             <View>
               <Text style={s.payoutLbl}>Total Payout</Text>
-              <Text style={s.payoutAmt}>₹{newBooking.totalAmount.toLocaleString()}</Text>
+              <Text style={s.payoutAmt}>₹{(newBooking.totalAmount ?? 0).toLocaleString()}</Text>
             </View>
             <View style={s.footerBtns}>
               <TouchableOpacity style={s.declineBtn}>

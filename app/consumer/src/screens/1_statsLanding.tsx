@@ -41,6 +41,8 @@ import ProfileScreen from "./5_profileScreen";
 
 import { Colors as C, Fonts as F } from "@/src/theme";
 import { PROMOS, SERVICE_CATEGORIES as CATEGORIES } from "@/src/services/mock";
+import { useAppSelector, useAppDispatch } from "@/src/redux/store";
+import { fetchWallet } from "@/src/redux/actions/appActions";
 import {
   HeroCard,
   PromoCard,

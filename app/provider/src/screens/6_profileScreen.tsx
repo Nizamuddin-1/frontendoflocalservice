@@ -10,7 +10,8 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { Divider } from '../components';
-import { PROVIDER_PROFILE } from '../hooks/mockData';
+import { useAppSelector, useAppDispatch } from '@/src/redux/store';
+import { providerAvailabilityToggle } from '@/src/redux/actions/appActions';
 
 interface RowConfig {
   iconName: keyof typeof Feather.glyphMap;
@@ -59,8 +60,9 @@ const RowItem: React.FC<RowConfig> = ({ iconName, iconBg, iconColor, title, subt
 );
 
 export default function ProfileScreen() {
-  const profile = PROVIDER_PROFILE;
-  const [isAvailable, setIsAvailable] = useState<boolean>(profile.isAvailable);
+  const dispatch = useAppDispatch();
+  const { data: profile } = useAppSelector((s) => s.provider.profile);
+  const { isAvailable } = useAppSelector((s) => s.provider.availability);
 
   const handleLogout = useCallback(() => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -88,20 +90,20 @@ export default function ProfileScreen() {
           {/* Avatar */}
           <View style={s.avatarSection}>
             <View style={s.avatar}>
-              <Text style={s.avatarTxt}>{profile.initials}</Text>
+              <Text style={s.avatarTxt}>{profile?.initials ?? ''}</Text>
             </View>
             <View style={s.avatarBadge}>
               <Feather name="check" size={10} color="#fff" />
             </View>
           </View>
-          <Text style={s.profileName}>{profile.name}</Text>
-          <Text style={s.profileCat}>{profile.category}</Text>
+          <Text style={s.profileName}>{profile?.name ?? ''}</Text>
+          <Text style={s.profileCat}>{profile?.category ?? ''}</Text>
           {/* Rating */}
           <View style={s.ratingRow}>
             {[1,2,3,4,5].map((n) => (
-              <Feather key={n} name="star" size={14} color={n <= Math.round(profile.rating) ? Colors.star : Colors.border2} />
+              <Feather key={n} name="star" size={14} color={n <= Math.round(profile?.rating ?? 0) ? Colors.star : Colors.border2} />
             ))}
-            <Text style={s.ratingTxt}>{profile.rating} ({profile.reviewCount} reviews)</Text>
+            <Text style={s.ratingTxt}>{profile?.rating ?? 0} ({profile?.reviewCount ?? 0} reviews)</Text>
           </View>
         </View>
  

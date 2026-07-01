@@ -11,7 +11,8 @@ import { Feather } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { StatusChip } from '../components';
-import { DASHBOARD_JOBS, DASHBOARD_STATS } from '../hooks/mockData';
+import { useAppSelector, useAppDispatch } from '@/src/redux/store';
+import { providerDashboardSetFilter } from '@/src/redux/actions/appActions';
 import type { RootStackParamList, DashboardJob, FilterOption } from '../types';
 
 type NavProp = StackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -33,22 +34,24 @@ const HERO_CARD = '#1E293B';
 const ACCENT    = '#6366F1';
 
 export default function DashboardScreen({ navigation }: Props) {
-  const [activeFilter, setActiveFilter] = useState<FilterOption>('All Jobs');
-  const stats = DASHBOARD_STATS;
+  const dispatch = useAppDispatch();
+  const { stats, jobs: DASHBOARD_JOBS, activeFilter } = useAppSelector((s) => s.provider.dashboard);
+  const DASHBOARD_STATS = stats;
+  const [localFilter, setLocalFilter] = useState<FilterOption>('All Jobs');
 
   const filteredJobs = useMemo((): DashboardJob[] => {
-    switch (activeFilter) {
+    switch (localFilter) {
       case 'Today':     return DASHBOARD_JOBS.filter((j) => j.timeLabel.startsWith('Today'));
       case 'Pending':   return DASHBOARD_JOBS.filter((j) => j.status === 'pending' || j.status === 'new');
       case 'Completed': return DASHBOARD_JOBS.filter((j) => j.status === 'done');
       case 'Cancelled': return DASHBOARD_JOBS.filter((j) => j.status === 'cancelled');
       default:          return DASHBOARD_JOBS;
     }
-  }, [activeFilter]);
+  }, [localFilter, DASHBOARD_JOBS]);
 
   const handleJobPress = useCallback((job: DashboardJob) => {
     if (!job.screen) return;
-    navigation.push(job.screen, { bookingId: job.id });
+    navigation.push(job.screen as any, { bookingId: job.id } as any);
   }, [navigation]);
 
   const renderJob = useCallback(({ item }: ListRenderItemInfo<DashboardJob>) => (
@@ -178,12 +181,15 @@ export default function DashboardScreen({ navigation }: Props) {
               {FILTERS.map((f) => (
                 <TouchableOpacity
                   key={f}
-                  style={[s.chip, activeFilter === f && s.chipActive]}
-                  onPress={() => setActiveFilter(f)}
+                  style={[s.chip, localFilter === f && s.chipActive]}
+                  onPress={() => {
+                    setLocalFilter(f);
+                    dispatch(providerDashboardSetFilter(f));
+                  }}
                   activeOpacity={0.75}
                 >
-                  {activeFilter === f && <View style={s.chipDot} />}
-                  <Text style={[s.chipTxt, activeFilter === f && s.chipTxtActive]}>{f}</Text>
+                  {localFilter === f && <View style={s.chipDot} />}
+                  <Text style={[s.chipTxt, localFilter === f && s.chipTxtActive]}>{f}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>

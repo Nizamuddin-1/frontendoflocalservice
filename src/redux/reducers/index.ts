@@ -1,10 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  Store — barrel export
-//      import { useAuthStore, useBookingsStore, useWalletStore } from '@/src/store';
+//  Root Reducer — combines all reducers using combineReducers
 // ─────────────────────────────────────────────────────────────────────────────
 
-export { useAuthStore } from './authStore';
-export type { Role } from './authStore';
-export { useBookingsStore } from './bookingsStore';
-export type { BookingFilter } from './bookingsStore';
-export { useWalletStore } from './walletStore';
+import { combineReducers } from '@reduxjs/toolkit';
+import consumerReducer from './consumerReducer';
+import providerReducer from './providerReducer';
+import opsReducer from './opsReducer';
+
+const rootReducer = combineReducers({
+  consumer: consumerReducer,
+  provider: providerReducer,
+  ops: opsReducer,
+});
+
+export default rootReducer;

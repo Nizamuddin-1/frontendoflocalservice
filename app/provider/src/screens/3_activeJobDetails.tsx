@@ -12,7 +12,9 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp }           from '@react-navigation/native';
 import { Colors, FontSize, FontWeight, Spacing, Radii } from '../theme';
 import { SuccessButton, SectionLabel } from '../components';
-import { JOB_STEPS, BOOKINGS, JOB_PAYOUT } from '../hooks/mockData';
+import { JOB_PAYOUT } from '../hooks/mockData';
+import { useAppSelector, useAppDispatch } from '@/src/redux/store';
+import { activeJobUpdatePhotos, activeJobUpdateNotes } from '@/src/redux/actions/appActions';
 import type { RootStackParamList, JobStep, JobStepState } from '../types';
 
 type NavProp    = StackNavigationProp<RootStackParamList, 'ActiveJob'>;
@@ -48,8 +50,10 @@ const StepItem: React.FC<{ step: JobStep; isLast: boolean }> = ({ step, isLast }
 };
 
 export default function ActiveJobScreen({ navigation, route }: Props) {
-  const [notes,    setNotes]    = useState<string>('');
-  const [uploaded, setUploaded] = useState<boolean[]>([true, true, false, false]);
+  const dispatch = useAppDispatch();
+  const { list: BOOKINGS } = useAppSelector((s) => s.provider.providerBookings);
+  const { steps: JOB_STEPS, uploadedPhotos: uploaded, notes } = useAppSelector((s) => s.provider.activeJob);
+  const [localNotes, setLocalNotes] = useState<string>(notes);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
 
@@ -58,8 +62,10 @@ export default function ActiveJobScreen({ navigation, route }: Props) {
   }, []);
 
   const toggleUpload = useCallback((index: number) => {
-    setUploaded((prev) => { const n = [...prev]; n[index] = !n[index]; return n; });
-  }, []);
+    const n = [...uploaded];
+    n[index] = !n[index];
+    dispatch(activeJobUpdatePhotos(n));
+  }, [uploaded, dispatch]);
 
   const booking    = BOOKINGS.find((b) => b.id === route.params.bookingId) ?? BOOKINGS[0];
   const canComplete= uploaded.filter(Boolean).length >= 2;
@@ -152,8 +158,11 @@ export default function ActiveJobScreen({ navigation, route }: Props) {
             style={s.notesInput}
             placeholder="Add notes for the customer about the work done…"
             placeholderTextColor={Colors.ink4}
-            value={notes}
-            onChangeText={setNotes}
+            value={localNotes}
+            onChangeText={(text) => {
+              setLocalNotes(text);
+              dispatch(activeJobUpdateNotes(text));
+            }}
             multiline
             numberOfLines={3}
             textAlignVertical="top"

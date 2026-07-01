@@ -10,7 +10,7 @@
  *   • Types                        → @/src/types
  */
 
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -28,25 +28,25 @@ import {
   BookingCard,
   SummaryStats,
 } from "@/src/components/bookings";
-import { ALL_BOOKINGS } from "@/src/services/mock";
+import { BOOKING_TABS } from "@/src/services/mock";
+import { useAppSelector, useAppDispatch } from "@/src/redux/store";
+import { fetchBookings, bookingSetFilter } from "@/src/redux/actions/appActions";
 import type { BookingStatus } from "@/src/types";
-
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
-const TABS: { key: BookingStatus | "all"; label: string }[] = [
-  { key: "all",       label: "All"       },
-  { key: "ongoing",   label: "Active"    },
-  { key: "upcoming",  label: "Upcoming"  },
-  { key: "completed", label: "Completed" },
-  { key: "cancelled", label: "Cancelled" },
-];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function BookingsScreen() {
-  const [activeTab, setActiveTab] = useState<BookingStatus | "all">("all");
+  const dispatch = useAppDispatch();
+  const { list: bookings, filter: activeTab, isLoading } = useAppSelector((s) => s.consumer.bookings);
+
+  useEffect(() => {
+    if (bookings.length === 0) {
+      dispatch(fetchBookings());
+    }
+  }, [dispatch, bookings.length]);
 
   const filtered = activeTab === "all"
-    ? ALL_BOOKINGS
-    : ALL_BOOKINGS.filter((b) => b.status === activeTab);
+    ? bookings
+    : bookings.filter((b) => b.status === activeTab);
 
   // Group by status for SectionList
   const sections =
@@ -69,7 +69,7 @@ export default function BookingsScreen() {
           <View>
             <Text style={[styles.headerTitle, { fontFamily: F.displayBold }]}>My Bookings</Text>
             <Text style={[styles.headerSub,   { fontFamily: F.bodyRegular }]}>
-              {ALL_BOOKINGS.length} total bookings
+              {bookings.length} total bookings
             </Text>
           </View>
           <TouchableOpacity style={styles.filterBtn} activeOpacity={0.75}>
@@ -86,13 +86,13 @@ export default function BookingsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabsContent}
         >
-          {TABS.map((tab) => {
+          {BOOKING_TABS.map((tab) => {
             const active = activeTab === tab.key;
             return (
               <TouchableOpacity
                 key={tab.key}
                 style={[styles.tab, active && styles.tabActive]}
-                onPress={() => setActiveTab(tab.key)}
+                onPress={() => dispatch(bookingSetFilter(tab.key))}
                 activeOpacity={0.75}
               >
                 <Text style={[
