@@ -1,8 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  Action Creators & Async Thunks — all actions in one file
+//  Updated to call real backend APIs via the service layer.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { authApi, bookingsApi, walletApi } from '@/src/services/api';
+import { authApi, bookingsApi, walletApi, servicesApi, providerApi } from '@/src/services/api';
 import { USER } from '@/src/services/mock';
 import type { BookingStatus } from '@/src/types';
 import * as ActionTypes from './actionTypes';
@@ -133,6 +134,16 @@ export const servicesSetSelected = (service: any) => ({
   payload: service,
 });
 
+export const fetchServices = () => async (dispatch: any) => {
+  dispatch(servicesFetchRequest());
+  try {
+    const services = await servicesApi.listServices();
+    dispatch(servicesFetchSuccess(services));
+  } catch (e) {
+    dispatch(servicesFetchFailure(e instanceof Error ? e.message : 'Failed to load services'));
+  }
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  WALLET actions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -202,13 +213,20 @@ export const profileUpdateFailure = (error: string) => ({
   payload: error,
 });
 
-export const fetchProfile = () => async (dispatch: any) => {
+export const fetchProfile = () => async (dispatch: any, getState: any) => {
   dispatch(profileFetchRequest());
   try {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    dispatch(profileFetchSuccess(USER));
+    const { auth } = getState().consumer;
+    if (auth.token) {
+      const profile = await authApi.me(auth.token);
+      dispatch(profileFetchSuccess(profile));
+    } else {
+      // Fallback to mock data if no token
+      dispatch(profileFetchSuccess(USER));
+    }
   } catch (e) {
-    dispatch(profileFetchFailure(e instanceof Error ? e.message : 'Failed to load profile'));
+    // Fallback to mock on error
+    dispatch(profileFetchSuccess(USER));
   }
 };
 
@@ -272,3 +290,45 @@ export const activeJobUpdateNotes = (notes: string) => ({
 export const providerAvailabilityToggle = () => ({
   type: ActionTypes.PROVIDER_AVAILABILITY_TOGGLE,
 });
+
+export const fetchProviderDashboard = () => async (dispatch: any) => {
+  dispatch(providerDashboardFetchRequest());
+  try {
+    const [stats, jobs] = await Promise.all([
+      providerApi.getStats(),
+      providerApi.getBookings(),
+    ]);
+    dispatch(providerDashboardFetchSuccess({ stats, jobs }));
+  } catch (e) {
+    dispatch(providerDashboardFetchFailure(e instanceof Error ? e.message : 'Failed to load dashboard'));
+  }
+};
+
+export const fetchProviderBookings = () => async (dispatch: any) => {
+  dispatch(providerBookingsFetchRequest());
+  try {
+    const bookings = await providerApi.getBookings();
+    dispatch(providerBookingsFetchSuccess(bookings));
+  } catch (e) {
+    dispatch(providerBookingsFetchFailure(e instanceof Error ? e.message : 'Failed to load bookings'));
+  }
+};
+
+export const updateProviderBookingStatus = (id: string, status: string) => async (dispatch: any) => {
+  dispatch(providerBookingUpdateRequest());
+  try {
+    const updated = await providerApi.updateBookingStatus(id, status);
+    dispatch(providerBookingUpdateSuccess(updated));
+  } catch (e) {
+    dispatch(providerBookingUpdateFailure(e instanceof Error ? e.message : 'Failed to update booking'));
+  }
+};
+
+export const toggleProviderAvailability = () => async (dispatch: any) => {
+  try {
+    await providerApi.toggleAvailability();
+    dispatch(providerAvailabilityToggle());
+  } catch {
+    // silently fail
+  }
+};

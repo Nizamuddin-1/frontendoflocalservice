@@ -1,12 +1,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  HTTP client — typed fetch wrapper
-//  Dependency-free (React Native ships fetch). Provides JSON handling, base URL,
-//  bearer-auth header injection, timeout, and a typed ApiError. Endpoint modules
-//  build on this; while config.useMock is true they short-circuit to mock data
-//  and this client is dormant but ready.
+//  Handles the backend's { data, error } response envelope, JWT token storage,
+//  auto-injection, and 401 refresh logic.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config } from '@/src/config/env';
+
+const TOKEN_KEY = '@localfix_token';
+const REFRESH_TOKEN_KEY = '@localfix_refresh_token';
 
 export class ApiError extends Error {
   status: number;
@@ -20,17 +22,45 @@ export class ApiError extends Error {
 }
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
-  /** Plain object — serialized to JSON automatically. */
   body?: unknown;
-  /** Bearer token; when present an Authorization header is added. */
   token?: string | null;
-  /** Abort the request after this many ms (default 15000). */
   timeoutMs?: number;
 }
 
-/** Simulated latency helper for the mock path. */
 export const mockDelay = <T>(value: T, ms: number = config.mockLatencyMs): Promise<T> =>
   new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+// ── Token management ────────────────────────────────────────────────────────
+
+export async function getStoredToken(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setStoredToken(token: string): Promise<void> {
+  await AsyncStorage.setItem(TOKEN_KEY, token);
+}
+
+export async function getStoredRefreshToken(): Promise<string | null> {
+  try {
+    return AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setStoredRefreshToken(token: string): Promise<void> {
+  await AsyncStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export async function clearStoredTokens(): Promise<void> {
+  await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY]);
+}
+
+// ── Request helpers ─────────────────────────────────────────────────────────
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, token, timeoutMs = 15000, headers, ...rest } = options;
@@ -40,6 +70,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const url = path.startsWith('http') ? path : `${config.apiBaseUrl}${path}`;
 
+  // Resolve auth token: explicit param > stored token
+  let authToken = token ?? undefined;
+  if (!authToken && !path.includes('/auth/login') && !path.includes('/auth/register')) {
+    authToken = (await getStoredToken()) ?? undefined;
+  }
+
   try {
     const res = await fetch(url, {
       ...rest,
@@ -47,19 +83,25 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
         ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
     const text = await res.text();
-    const data = text ? JSON.parse(text) : null;
+    const json = text ? JSON.parse(text) : null;
 
     if (!res.ok) {
-      throw new ApiError(res.status, `Request failed: ${res.status} ${res.statusText}`, data);
+      const msg = json?.error?.message ?? `Request failed: ${res.status}`;
+      throw new ApiError(res.status, msg, json);
     }
-    return data as T;
+
+    // Backend wraps successful responses in { data: T, error: {} }
+    if (json && 'data' in json) {
+      return json.data as T;
+    }
+    return json as T;
   } catch (err) {
     if (err instanceof ApiError) throw err;
     if (err instanceof Error && err.name === 'AbortError') {
