@@ -2,17 +2,18 @@
 //  Screen 2 — Booking Details (Redesigned)
 // ─────────────────────────────────────────────
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar,
+  StyleSheet, SafeAreaView, StatusBar, ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp }           from '@react-navigation/native';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { PrimaryButton, DangerButton, StatusChip } from '../components';
-import { useAppSelector } from '@/src/redux/store';
+import { useAppSelector, useAppDispatch } from '@/src/redux/store';
+import { fetchProviderBookings } from '@/src/redux/actions/appActions';
 import type { RootStackParamList, ServiceItem } from '../types';
 
 type NavProp    = StackNavigationProp<RootStackParamList, 'BookingDetails'>;
@@ -43,16 +44,36 @@ const ServiceRow: React.FC<{ item: ServiceItem; isLast?: boolean }> = ({ item, i
 );
 
 export default function BookingDetailsScreen({ navigation, route }: Props) {
-  const { list: BOOKINGS } = useAppSelector((s) => s.provider.providerBookings);
+  const dispatch = useAppDispatch();
+  const { list: BOOKINGS, isLoading } = useAppSelector((s) => s.provider.providerBookings);
+
+  useEffect(() => {
+    if (BOOKINGS.length === 0) {
+      dispatch(fetchProviderBookings() as any);
+    }
+  }, [dispatch, BOOKINGS.length]);
+
   const booking = useMemo(
-    () => BOOKINGS.find((b) => b.id === route.params.bookingId) ?? BOOKINGS[0],
+    () => BOOKINGS.find((b) => b.id === route.params.bookingId),
     [route.params.bookingId, BOOKINGS]
   );
 
-  const scheduledDate = new Date(booking.scheduledAt);
+  if (isLoading || !booking) {
+    return (
+      <SafeAreaView style={[s.safe, { justifyContent: 'center', alignItems: 'center' }]}>
+        {isLoading ? (
+          <ActivityIndicator size="large" color={ACCENT} />
+        ) : (
+          <Text style={{ color: MUTED }}>Booking not found</Text>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  const scheduledDate = new Date(booking.scheduledAt || Date.now());
   const dateLabel     = scheduledDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   const timeLabel     = scheduledDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  const durationHrs   = booking.durationMins / 60;
+  const durationHrs   = (booking.durationMins || 60) / 60;
 
   return (
     <SafeAreaView style={s.safe}>

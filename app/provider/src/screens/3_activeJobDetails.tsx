@@ -5,7 +5,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  TextInput, Animated, StyleSheet, SafeAreaView, StatusBar,
+  TextInput, Animated, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -14,7 +14,7 @@ import { Colors, FontSize, FontWeight, Spacing, Radii } from '../theme';
 import { SuccessButton, SectionLabel } from '../components';
 import { JOB_PAYOUT } from '../hooks/mockData';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
-import { activeJobUpdatePhotos, activeJobUpdateNotes } from '@/src/redux/actions/appActions';
+import { activeJobUpdatePhotos, activeJobUpdateNotes, fetchProviderBookings } from '@/src/redux/actions/appActions';
 import type { RootStackParamList, JobStep, JobStepState } from '../types';
 
 type NavProp    = StackNavigationProp<RootStackParamList, 'ActiveJob'>;
@@ -51,15 +51,18 @@ const StepItem: React.FC<{ step: JobStep; isLast: boolean }> = ({ step, isLast }
 
 export default function ActiveJobScreen({ navigation, route }: Props) {
   const dispatch = useAppDispatch();
-  const { list: BOOKINGS } = useAppSelector((s) => s.provider.providerBookings);
+  const { list: BOOKINGS, isLoading } = useAppSelector((s) => s.provider.providerBookings);
   const { steps: JOB_STEPS, uploadedPhotos: uploaded, notes } = useAppSelector((s) => s.provider.activeJob);
   const [localNotes, setLocalNotes] = useState<string>(notes);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (BOOKINGS.length === 0) {
+      dispatch(fetchProviderBookings() as any);
+    }
     Animated.timing(progressAnim, { toValue: PROGRESS, duration: 800, useNativeDriver: false }).start();
-  }, []);
+  }, [dispatch, BOOKINGS.length, progressAnim]);
 
   const toggleUpload = useCallback((index: number) => {
     const n = [...uploaded];
@@ -67,9 +70,21 @@ export default function ActiveJobScreen({ navigation, route }: Props) {
     dispatch(activeJobUpdatePhotos(n));
   }, [uploaded, dispatch]);
 
-  const booking    = BOOKINGS.find((b) => b.id === route.params.bookingId) ?? BOOKINGS[0];
-  const canComplete= uploaded.filter(Boolean).length >= 2;
+  const booking = BOOKINGS.find((b) => b.id === route.params.bookingId);
+  const canComplete = uploaded.filter(Boolean).length >= 2;
   const uploadedCount = uploaded.filter(Boolean).length;
+
+  if (isLoading || !booking) {
+    return (
+      <SafeAreaView style={[s.safe, { justifyContent: 'center', alignItems: 'center' }]}>
+        {isLoading ? (
+          <ActivityIndicator size="large" color={Colors.accent} />
+        ) : (
+          <Text style={{ color: Colors.ink3 }}>Active Job not found</Text>
+        )}
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={s.safe}>

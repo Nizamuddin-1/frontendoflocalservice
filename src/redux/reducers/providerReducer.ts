@@ -15,7 +15,6 @@ import {
   PROFILE_FETCH_REQUEST, PROFILE_FETCH_SUCCESS, PROFILE_FETCH_FAILURE,
   PROFILE_UPDATE_REQUEST, PROFILE_UPDATE_SUCCESS, PROFILE_UPDATE_FAILURE,
 } from '../actions/actionTypes';
-import { DASHBOARD_STATS, DASHBOARD_JOBS, BOOKINGS, JOB_STEPS, PROVIDER_PROFILE } from '@/app/provider/src/hooks/mockData';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -150,22 +149,22 @@ export interface ProviderState {
 
 const initialState: ProviderState = {
   dashboard: {
-    stats: DASHBOARD_STATS,
-    jobs: DASHBOARD_JOBS,
+    stats: { todayJobs: 0, monthEarnings: 0, avgRating: 0, completionRate: 0, jobsDone: 0, monthGrowth: 0 },
+    jobs: [],
     activeFilter: 'All Jobs',
     isLoading: false,
     error: null,
   },
   providerBookings: {
-    list: BOOKINGS,
+    list: [],
     selectedBooking: null,
     isLoading: false,
     error: null,
   },
   activeJob: {
     booking: null,
-    steps: JOB_STEPS,
-    uploadedPhotos: [true, true, false, false],
+    steps: [],
+    uploadedPhotos: [false, false, false, false],
     notes: '',
     progress: 0,
     isLoading: false,
@@ -176,7 +175,7 @@ const initialState: ProviderState = {
     isLoading: false,
   },
   profile: {
-    data: PROVIDER_PROFILE,
+    data: null,
     isLoading: false,
     error: null,
   },

@@ -2,7 +2,7 @@
 // Real HTTP calls to the backend consumer service/category APIs.
 import { config } from '@/src/config/env';
 import { apiClient, mockDelay } from '../client';
-import { SERVICES, SERVICE_CATEGORIES } from '@/src/services/mock';
+import { SERVICES, SERVICE_CATEGORIES, PROMOS } from '@/src/services/mock';
 import type { Service, ServiceCategory } from '@/src/types';
 
 /** Backend service shape from the Service model. */
@@ -26,6 +26,7 @@ interface BackendService {
   accentBg: string;
   jobCount: number;
   shortDesc: string;
+  variations?: any[];
 }
 
 /** Backend category shape from the ServiceCategory model. */
@@ -59,7 +60,16 @@ function mapService(s: BackendService): Service {
     accentBg: s.accentBg,
     jobCount: s.jobCount,
     shortDesc: s.shortDesc,
-    variations: [], // variations loaded separately if needed
+    variations: (s.variations || []).map(v => ({
+      id: v._id,
+      label: v.label,
+      desc: v.desc,
+      price: v.price,
+      originalPrice: v.originalPrice,
+      popular: v.popular,
+      mcIcon: v.mcIcon,
+      duration: v.duration,
+    })),
   };
 }
 
@@ -95,6 +105,24 @@ export const servicesApi = {
       return mapService(data);
     } catch {
       return undefined;
+    }
+  },
+
+  async listPromos(): Promise<any[]> {
+    if (config.useMock) return mockDelay(PROMOS);
+    try {
+      return await apiClient.get<any[]>('/consumer/promos');
+    } catch {
+      return [];
+    }
+  },
+
+  async listOffers(): Promise<any[]> {
+    if (config.useMock) return mockDelay([]); // or import OFFERS and use it
+    try {
+      return await apiClient.get<any[]>('/consumer/offers');
+    } catch {
+      return [];
     }
   },
 };

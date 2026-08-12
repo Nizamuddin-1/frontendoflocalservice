@@ -5,12 +5,13 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Animated, StyleSheet, SafeAreaView, StatusBar,
+  Animated, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
+import { fetchProviderBookings, fetchProfile } from '@/src/redux/actions/appActions';
 import type { RootStackParamList } from '../types';
 
 type HomeNavProp = StackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -31,6 +32,9 @@ export default function HomeScreen({ navigation }: Props) {
   const pulse     = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    dispatch(fetchProviderBookings() as any);
+    dispatch(fetchProfile() as any);
+
     Animated.parallel([
       Animated.timing(heroFade,  { toValue: 1, duration: 320, useNativeDriver: true }),
       Animated.timing(cardFade,  { toValue: 1, duration: 400, delay: 160, useNativeDriver: true }),
@@ -45,7 +49,7 @@ export default function HomeScreen({ navigation }: Props) {
     );
     pulseAnim.start();
     return () => pulseAnim.stop();
-  }, []);
+  }, [dispatch]);
 
   const newBooking = BOOKINGS[0] ?? {
     id: '',
@@ -61,6 +65,14 @@ export default function HomeScreen({ navigation }: Props) {
       navigation.push('BookingDetails', { bookingId: newBooking.id });
     }
   }, [navigation, newBooking.id]);
+
+  if (profile.isLoading || providerBookings.isLoading) {
+    return (
+      <SafeAreaView style={[s.safe, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={ACCENT} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={s.safe}>
@@ -118,60 +130,70 @@ export default function HomeScreen({ navigation }: Props) {
             { opacity: cardFade, transform: [{ translateY: cardSlide }] },
           ]}
         >
-          {/* Header strip */}
-          <View style={s.cardStrip}>
-            <View style={s.cardStripLeft}>
-              <View style={s.stripDot} />
-              <Text style={s.cardStripTxt}>New Booking Request</Text>
-            </View>
-            <View style={s.timePill}>
-              <Text style={s.timePillTxt}>Just now</Text>
-            </View>
-          </View>
-
-          {/* Body */}
-          <View style={s.cardBody}>
-            <View style={s.serviceIconWrap}>
-              <Feather name="wind" size={26} color={ACCENT} />
-            </View>
-            <View style={s.cardBodyInfo}>
-              <Text style={s.cardTitle}>
-                {newBooking.serviceType} — {newBooking.services[0]?.quantity ?? 0} Units
-              </Text>
-              <View style={s.metaRow}>
-                <View style={s.metaItem}>
-                  <Feather name="user" size={12} color="#64748B" />
-                  <Text style={s.metaTxt}>{newBooking.customer?.name ?? ''}</Text>
+          {BOOKINGS.length > 0 ? (
+            <>
+              {/* Header strip */}
+              <View style={s.cardStrip}>
+                <View style={s.cardStripLeft}>
+                  <View style={s.stripDot} />
+                  <Text style={s.cardStripTxt}>New Booking Request</Text>
                 </View>
-                <View style={s.metaDivider} />
-                <View style={s.metaItem}>
-                  <Feather name="map-pin" size={12} color="#64748B" />
-                  <Text style={s.metaTxt}>{newBooking.location?.distanceKm ?? 0} km away</Text>
+                <View style={s.timePill}>
+                  <Text style={s.timePillTxt}>Just now</Text>
                 </View>
               </View>
-            </View>
-          </View>
 
-          {/* Divider */}
-          <View style={s.divider} />
+              {/* Body */}
+              <View style={s.cardBody}>
+                <View style={s.serviceIconWrap}>
+                  <Feather name="wind" size={26} color={ACCENT} />
+                </View>
+                <View style={s.cardBodyInfo}>
+                  <Text style={s.cardTitle}>
+                    {newBooking.serviceType} — {newBooking.services?.[0]?.quantity ?? 1} Units
+                  </Text>
+                  <View style={s.metaRow}>
+                    <View style={s.metaItem}>
+                      <Feather name="user" size={12} color="#64748B" />
+                      <Text style={s.metaTxt}>{newBooking.customer?.name ?? 'Customer'}</Text>
+                    </View>
+                    <View style={s.metaDivider} />
+                    <View style={s.metaItem}>
+                      <Feather name="map-pin" size={12} color="#64748B" />
+                      <Text style={s.metaTxt}>{newBooking.location?.distanceKm ?? 0} km away</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
 
-          {/* Footer */}
-          <View style={s.cardFooter}>
-            <View>
-              <Text style={s.payoutLbl}>Total Payout</Text>
-              <Text style={s.payoutAmt}>₹{(newBooking.totalAmount ?? 0).toLocaleString()}</Text>
+              {/* Divider */}
+              <View style={s.divider} />
+
+              {/* Footer */}
+              <View style={s.cardFooter}>
+                <View>
+                  <Text style={s.payoutLbl}>Total Payout</Text>
+                  <Text style={s.payoutAmt}>₹{(newBooking.totalAmount ?? 0).toLocaleString()}</Text>
+                </View>
+                <View style={s.footerBtns}>
+                  <TouchableOpacity style={s.declineBtn}>
+                    <Feather name="x" size={14} color="#EF4444" />
+                    <Text style={s.declineTxt}>Decline</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.acceptBtn} onPress={handleViewBooking}>
+                    <Text style={s.acceptTxt}>View Details</Text>
+                    <Feather name="arrow-right" size={14} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          ) : (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <Feather name="inbox" size={32} color="#94A3B8" style={{ marginBottom: 10 }} />
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#334155' }}>No new requests</Text>
+              <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 5 }}>You're all caught up for now!</Text>
             </View>
-            <View style={s.footerBtns}>
-              <TouchableOpacity style={s.declineBtn}>
-                <Feather name="x" size={14} color="#EF4444" />
-                <Text style={s.declineTxt}>Decline</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.acceptBtn} onPress={handleViewBooking}>
-                <Text style={s.acceptTxt}>View Details</Text>
-                <Feather name="arrow-right" size={14} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </View>
+          )}
         </Animated.View>
 
         {/* ── Quick Actions ───────────────────── */}

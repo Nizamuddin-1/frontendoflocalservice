@@ -91,8 +91,8 @@ const initialState: ConsumerState = {
     error: null,
   },
   services: {
-    list: SERVICES,
-    categories: CATEGORIES,
+    list: [],
+    categories: [],
     selectedService: null,
     activeCategory: 'all',
     searchQuery: '',
@@ -223,7 +223,13 @@ export default function consumerReducer(
     case SERVICES_FETCH_SUCCESS:
       return {
         ...state,
-        services: { ...state.services, list: action.payload, isLoading: false, error: null },
+        services: { 
+          ...state.services, 
+          list: action.payload.services, 
+          categories: action.payload.categories,
+          isLoading: false, 
+          error: null 
+        },
       };
     case SERVICES_FETCH_FAILURE:
       return {

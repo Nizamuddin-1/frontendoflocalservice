@@ -39,7 +39,7 @@ import { fetchProfile } from "@/src/redux/actions/appActions";
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((s) => s.consumer.profile);
+  const { user, isLoading } = useAppSelector((s) => s.consumer.profile);
   const [toggles, setToggles] = useState(DEFAULT_TOGGLES);
   const [showEdit, setShowEdit] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -91,8 +91,14 @@ export default function ProfileScreen() {
         )}
         scrollEventThrottle={16}
       >
-        {/* ── Hero Section ── */}
-        <View style={styles.hero}>
+        {isLoading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 }}>
+            <Text style={{ fontFamily: F.bodyReg, color: C.slateLight }}>Loading profile...</Text>
+          </View>
+        ) : (
+          <>
+            {/* ── Hero Section ── */}
+            <View style={styles.hero}>
           {/* Decorative elements — toned for light bg */}
           <View style={styles.heroCircle1} />
           <View style={styles.heroCircle2} />
@@ -144,10 +150,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* ── Loyalty Bar ── */}
-        <View style={styles.section}>
-          <LoyaltyBar points={user?.loyaltyPoints ?? 0} />
-        </View>
+      
 
         {/* ── Quick Info Card ── */}
         <View style={styles.section}>
@@ -199,6 +202,8 @@ export default function ProfileScreen() {
         </View>
 
         <View style={{ height: 40 }} />
+          </>
+        )}
       </Animated.ScrollView>
 
       {/* ── Edit Profile Modal ── */}

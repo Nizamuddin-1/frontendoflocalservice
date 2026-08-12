@@ -13,7 +13,8 @@ import { RouteProp }           from '@react-navigation/native';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { PrimaryButton } from '../components';
 import { JOB_PAYOUT } from '../hooks/mockData';
-import { useAppSelector } from '@/src/redux/store';
+import { useAppDispatch } from '@/src/redux/store';
+import { updateProviderBookingStatus } from '@/src/redux/actions/appActions';
 import type { RootStackParamList, PayoutRow } from '../types';
 
 type NavProp    = StackNavigationProp<RootStackParamList, 'JobComplete'>;
@@ -29,6 +30,7 @@ const STAR_LABELS: Record<number, string> = {
 };
 
 export default function JobCompleteScreen({ navigation, route }: Props) {
+  const dispatch = useAppDispatch();
   const [rating, setRating] = useState<number>(0);
 
   const iconScale    = useRef(new Animated.Value(0.2)).current;
@@ -37,6 +39,9 @@ export default function JobCompleteScreen({ navigation, route }: Props) {
   const contentFade  = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Submit job completion to API
+    dispatch(updateProviderBookingStatus(route.params.bookingId, 'done') as any);
+
     Animated.sequence([
       Animated.parallel([
         Animated.spring(iconScale,   { toValue: 1, tension: 55, friction: 6, useNativeDriver: true }),
@@ -47,7 +52,7 @@ export default function JobCompleteScreen({ navigation, route }: Props) {
         Animated.timing(contentSlide, { toValue: 0, duration: 360, useNativeDriver: true }),
       ]),
     ]).start();
-  }, []);
+  }, [dispatch, route.params.bookingId]);
 
   const handleRate = useCallback((n: number) => setRating(n), []);
   const payout = route.params.payoutAmount;

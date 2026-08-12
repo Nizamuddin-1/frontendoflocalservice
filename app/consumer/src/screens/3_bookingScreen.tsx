@@ -110,36 +110,42 @@ export default function BookingsScreen() {
       </View>
 
       {/* ── List ── */}
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <BookingCard booking={item} />}
-        renderSectionHeader={({ section: { title } }) =>
-          title ? (
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionHeaderText, { fontFamily: F.bodySemi }]}>{title}</Text>
+      {isLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontFamily: F.bodyRegular, color: C.slateLight }}>Loading bookings...</Text>
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <BookingCard booking={item} />}
+          renderSectionHeader={({ section: { title } }) =>
+            title ? (
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionHeaderText, { fontFamily: F.bodySemi }]}>{title}</Text>
+              </View>
+            ) : null
+          }
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconWrap}>
+                <Ionicons name="receipt-outline" size={40} color={C.slateLight} />
+              </View>
+              <Text style={[styles.emptyTitle, { fontFamily: F.displaySemi }]}>No bookings here</Text>
+              <Text style={[styles.emptySub,   { fontFamily: F.bodyRegular  }]}>
+                Your {activeTab !== "all" ? activeTab : ""} bookings will appear here
+              </Text>
+              <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85}>
+                <Ionicons name="add-circle-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={[styles.emptyBtnText, { fontFamily: F.bodySemi }]}>Book a Service</Text>
+              </TouchableOpacity>
             </View>
-          ) : null
-        }
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        stickySectionHeadersEnabled={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons name="receipt-outline" size={40} color={C.slateLight} />
-            </View>
-            <Text style={[styles.emptyTitle, { fontFamily: F.displaySemi }]}>No bookings here</Text>
-            <Text style={[styles.emptySub,   { fontFamily: F.bodyRegular  }]}>
-              Your {activeTab !== "all" ? activeTab : ""} bookings will appear here
-            </Text>
-            <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85}>
-              <Ionicons name="add-circle-outline" size={16} color="#FFF" style={{ marginRight: 6 }} />
-              <Text style={[styles.emptyBtnText, { fontFamily: F.bodySemi }]}>Book a Service</Text>
-            </TouchableOpacity>
-          </View>
-        }
-      />
+          }
+        />
+      )}
     </View>
   );
 }

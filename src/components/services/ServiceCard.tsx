@@ -39,7 +39,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ item, index, onBook })
 
   return (
     <Animated.View style={[styles.card, { opacity: entryO, transform: [{ translateY: entryY }, { scale: pressS }] }]}>
-      <TouchableOpacity activeOpacity={1} onPressIn={pressIn} onPressOut={pressOut}>
+      <TouchableOpacity activeOpacity={1} onPressIn={pressIn} onPressOut={pressOut} onPress={() => onBook(item)}>
 
         {/* ── Left accent strip with WHITE ICON BOX ── */}
         <View style={[styles.cardAccentStrip, { backgroundColor: item.accentColor }]}>

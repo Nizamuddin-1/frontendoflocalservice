@@ -40,11 +40,10 @@ import WalletScreen from "./4_walletScreen";
 import ProfileScreen from "./5_profileScreen";
 
 import { Colors as C, Fonts as F } from "@/src/theme";
-import { PROMOS, SERVICE_CATEGORIES as CATEGORIES } from "@/src/services/mock";
+import { servicesApi } from "@/src/services/api";
 import { useAppSelector, useAppDispatch } from "@/src/redux/store";
 import { fetchWallet } from "@/src/redux/actions/appActions";
 import {
-  HeroCard,
   PromoCard,
   ServiceTile,
   TrustStrip,
@@ -58,6 +57,9 @@ const { width } = Dimensions.get("window");
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [promoIndex, setPromoIndex] = useState(0);
+  const [promos, setPromos] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const promoRef = useRef<ScrollView>(null);
@@ -74,17 +76,37 @@ export default function HomeScreen() {
     extrapolate: "clamp",
   });
 
+  // Fetch Data
+  useEffect(() => {
+    let mounted = true;
+    Promise.all([
+      servicesApi.listPromos(),
+      servicesApi.listCategories(),
+    ]).then(([fetchedPromos, fetchedCategories]) => {
+      if (mounted) {
+        setPromos(fetchedPromos || []);
+        setCategories(fetchedCategories || []);
+        setLoading(false);
+      }
+    }).catch((err) => {
+      console.error(err);
+      if (mounted) setLoading(false);
+    });
+    return () => { mounted = false; };
+  }, []);
+
   // Auto-advance promo carousel
   useEffect(() => {
+    if (promos.length === 0) return;
     const id = setInterval(() => {
       setPromoIndex(i => {
-        const next = (i + 1) % PROMOS.length;
+        const next = (i + 1) % promos.length;
         promoRef.current?.scrollTo({ x: next * (width - 32), animated: true });
         return next;
       });
     }, 4000);
     return () => clearInterval(id);
-  }, []);
+  }, [promos.length]);
 
   // ✅ UPDATED: renderContent now handles 'services' case
   const renderContent = () => {
@@ -143,16 +165,10 @@ export default function HomeScreen() {
                   <Text style={[styles.greetName, { fontFamily: F.displayBold }]}>
                     Arjun Malhotra
                   </Text>
-                  <Text style={[styles.greetSub, { fontFamily: F.bodyReg }]}>
-                    What do you need sorted today?
-                  </Text>
+
                 </View>
               </View>
 
-              {/* HERO WALLET CARD */}
-              <View style={styles.heroSection}>
-                <HeroCard onAddMoney={() => setActiveTab('wallet')} />
-              </View>
 
               {/* PROMO CAROUSEL */}
               <View style={styles.promoSection}>
@@ -163,7 +179,7 @@ export default function HomeScreen() {
                   </View>
                   {/* Indicator dots */}
                   <View style={styles.promoDots}>
-                    {PROMOS.map((_, i) => (
+                    {promos.map((_, i) => (
                       <Animated.View
                         key={i}
                         style={[
@@ -185,8 +201,10 @@ export default function HomeScreen() {
                   }}
                   contentContainerStyle={styles.promoScrollContent}
                 >
-                  {PROMOS.map(p => (
-                    <View key={p.id} style={{ width: width - 44 }}>
+                  {loading ? (
+                    <Text style={{ padding: 20, fontFamily: F.bodyReg }}>Loading Promos...</Text>
+                  ) : promos.map(p => (
+                    <View key={p._id || p.id} style={{ width: width - 44 }}>
                       <PromoCard promo={p} />
                     </View>
                   ))}
@@ -211,7 +229,9 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={styles.servicesGrid}>
-                  {CATEGORIES.map((c, i) => <ServiceTile key={c.id} item={c} index={i} />)}
+                  {loading ? (
+                    <Text style={{ padding: 20, fontFamily: F.bodyReg }}>Loading Services...</Text>
+                  ) : categories.map((c, i) => <ServiceTile key={c._id || c.id} item={c} index={i} />)}
                 </View>
               </View>
 

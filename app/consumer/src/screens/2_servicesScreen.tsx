@@ -10,7 +10,7 @@
  *   • Types                        → @/src/types
  */
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -40,7 +40,7 @@ import type { Service, SortMode } from "@/src/types";
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ServicesScreen() {
   const dispatch = useAppDispatch();
-  const { list: services, categories, activeCategory, searchQuery, sortMode } = useAppSelector((s) => s.consumer.services);
+  const { list: services, categories, activeCategory, searchQuery, sortMode, isLoading } = useAppSelector((s) => s.consumer.services);
   const [showFilter,   setShowFilter]   = useState(false);
   const [searchFocus,  setSearchFocus]  = useState(false);
   const [bookingService, setBookingService] = useState<Service | null>(null);
@@ -49,6 +49,14 @@ export default function ServicesScreen() {
 
   const headerShadow = scrollY.interpolate({ inputRange: [0, 50], outputRange: [0, 0.08], extrapolate: "clamp" });
   const headerElev   = scrollY.interpolate({ inputRange: [0, 50], outputRange: [0, 6],    extrapolate: "clamp" });
+
+  useEffect(() => {
+    // Only fetch if we don't have them yet or we want to force refresh on mount
+    dispatch({ type: 'SERVICES_FETCH_REQUEST' }); // Let Redux know we started
+    import("@/src/redux/actions/appActions").then(actions => {
+      dispatch(actions.fetchServices() as any);
+    });
+  }, [dispatch]);
 
   const handleBook = useCallback((service: Service) => {
     setBookingService(service);
@@ -147,12 +155,6 @@ export default function ServicesScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Row 4: Category chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catsRow}>
-          {categories.map((cat) => (
-            <CatPill key={cat.id} cat={cat} active={activeCategory === cat.id} onPress={() => dispatch(servicesSetCategory(cat.id))} />
-          ))}
-        </ScrollView>
       </Animated.View>
 
       {/* ── Main scroll ── */}
@@ -162,7 +164,14 @@ export default function ServicesScreen() {
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
       >
-        {activeCategory === "all" && !searchQuery && <TrustStrip />}
+        {/* Row 4: Category chips */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catsRow}>
+          {categories.map((cat) => (
+            <CatPill key={cat.id} cat={cat} active={activeCategory === cat.id} onPress={() => dispatch(servicesSetCategory(cat.id))} />
+          ))}
+        </ScrollView>
+
+        
 
         {/* Results bar */}
         <View style={styles.resultsBar}>
@@ -184,7 +193,11 @@ export default function ServicesScreen() {
         </View>
 
         {/* Cards */}
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <Text style={{ fontFamily: F.bodyReg, color: C.inkLight }}>Loading services...</Text>
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIconBox}>
               <Ionicons name="search-circle-outline" size={48} color={C.inkFaint} />
@@ -198,7 +211,7 @@ export default function ServicesScreen() {
           </View>
         ) : (
           filtered.map((item, i) => (
-            <ServiceCard key={item.id} item={item} index={i} onBook={handleBook} />
+            <ServiceCard key={item._id || item.id} item={item} index={i} onBook={handleBook} />
           ))
         )}
         <View style={{ height: 36 }} />

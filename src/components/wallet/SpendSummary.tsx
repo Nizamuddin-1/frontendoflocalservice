@@ -66,40 +66,6 @@ export const SpendSummary: React.FC = () => {
     <View style={styles.summaryCard}>
       {/* subtle warm orb */}
       <View style={styles.summaryBlob} />
-
-      {/* ── Top row: brand + MAR badge ── */}
-      <View style={styles.summaryTopRow}>
-        <View style={styles.summaryBrandRow}>
-          <View style={styles.summaryBrandIcon}>
-            <MaterialCommunityIcons name="chart-donut" size={13} color={C.gold} />
-          </View>
-          <Text style={[styles.summaryBrandText, { fontFamily: F.bodyBold }]}>Spend Snapshot</Text>
-        </View>
-        <View style={styles.summaryMonthBadge}>
-          <Ionicons name="calendar-outline" size={10} color={C.slate} />
-          <Text style={[styles.summaryMonthBadgeText, { fontFamily: F.bodySemi }]}>{"  MAR 2024"}</Text>
-        </View>
-      </View>
-
-      {/* ── Hero: eyebrow + big total ── */}
-      <Text style={[styles.summaryEyebrow, { fontFamily: F.bodyReg }]}>Total Spent This Month</Text>
-      <View style={styles.summaryHeroRow}>
-        <Text style={[styles.summaryHeroAmount, { fontFamily: F.displayBold }]}>
-          ₹{total.toLocaleString("en-IN")}
-        </Text>
-      </View>
-
-      {/* ── Cashback pill ── */}
-      <View style={styles.summaryCashbackPill}>
-        <MaterialCommunityIcons name="cash-refund" size={11} color={C.gold} />
-        <Text style={[styles.summaryCashbackText, { fontFamily: F.bodySemi }]}>
-          {"  ₹" + cashbackTotal.toLocaleString("en-IN") + " cashback earned this month"}
-        </Text>
-      </View>
-
-      {/* ── Divider ── */}
-      <View style={styles.summaryDivider} />
-
       {/* ── Bottom 3-col mini stats strip ── */}
       <View style={styles.summaryStatsStrip}>
         {[

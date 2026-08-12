@@ -2,17 +2,17 @@
 //  Screen 4 — Dashboard (Redesigned)
 // ─────────────────────────────────────────────
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View, Text, FlatList, ScrollView, TouchableOpacity,
-  ListRenderItemInfo, StyleSheet, SafeAreaView, StatusBar,
+  ListRenderItemInfo, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { StatusChip } from '../components';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
-import { providerDashboardSetFilter } from '@/src/redux/actions/appActions';
+import { providerDashboardSetFilter, fetchProviderDashboard } from '@/src/redux/actions/appActions';
 import type { RootStackParamList, DashboardJob, FilterOption } from '../types';
 
 type NavProp = StackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -35,9 +35,13 @@ const ACCENT    = '#6366F1';
 
 export default function DashboardScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
-  const { stats, jobs: DASHBOARD_JOBS, activeFilter } = useAppSelector((s) => s.provider.dashboard);
+  const { stats, jobs: DASHBOARD_JOBS, activeFilter, isLoading, error } = useAppSelector((s) => s.provider.dashboard);
   const DASHBOARD_STATS = stats;
   const [localFilter, setLocalFilter] = useState<FilterOption>('All Jobs');
+
+  useEffect(() => {
+    dispatch(fetchProviderDashboard() as any);
+  }, [dispatch]);
 
   const filteredJobs = useMemo((): DashboardJob[] => {
     switch (localFilter) {
@@ -99,113 +103,127 @@ export default function DashboardScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="light-content" backgroundColor={HERO_BG} />
+      
+      {isLoading ? (
+        <View style={s.loadingContainer}>
+          <ActivityIndicator size="large" color={ACCENT} />
+        </View>
+      ) : error ? (
+        <View style={s.errorContainer}>
+          <Feather name="alert-circle" size={40} color="#EF4444" />
+          <Text style={s.errorText}>{error}</Text>
+          <TouchableOpacity style={s.retryBtn} onPress={() => dispatch(fetchProviderDashboard() as any)}>
+            <Text style={s.retryTxt}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList<DashboardJob>
+          data={filteredJobs}
+          keyExtractor={(item) => item.id}
+          renderItem={renderJob}
+          contentContainerStyle={s.listContent}
+          showsVerticalScrollIndicator={false}
 
-      <FlatList<DashboardJob>
-        data={filteredJobs}
-        keyExtractor={(item) => item.id}
-        renderItem={renderJob}
-        contentContainerStyle={s.listContent}
-        showsVerticalScrollIndicator={false}
+          // ── All header UI lives here so the whole page scrolls together ──
+          ListHeaderComponent={
+            <>
+              {/* ── Hero ──────────────────────── */}
+              <View style={s.hero}>
 
-        // ── All header UI lives here so the whole page scrolls together ──
-        ListHeaderComponent={
-          <>
-            {/* ── Hero ──────────────────────── */}
-            <View style={s.hero}>
-
-              {/* Top row */}
-              <View style={s.heroTop}>
-                <View>
-                  <Text style={s.heroGreet}>Good morning 👋</Text>
-                  <Text style={s.heroName}>Rajesh Kumar</Text>
+                {/* Top row */}
+                <View style={s.heroTop}>
+                  <View>
+                    <Text style={s.heroGreet}>Good morning 👋</Text>
+                    <Text style={s.heroName}>Rajesh Kumar</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={s.avatarBtn}
+                    onPress={() => navigation.navigate('MainTabs')}
+                  >
+                    <Text style={s.avatarTxt}>RK</Text>
+                    <View style={s.onlineDot} />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={s.avatarBtn}
-                  onPress={() => navigation.navigate('MainTabs')}
-                >
-                  <Text style={s.avatarTxt}>RK</Text>
-                  <View style={s.onlineDot} />
-                </TouchableOpacity>
-              </View>
 
-              {/* Earnings card */}
-              <View style={s.earnCard}>
-                <View>
-                  <Text style={s.earnLbl}>This Month&apos;s Earnings</Text>
-                  <Text style={s.earnAmt}>₹{stats.monthEarnings.toLocaleString()}</Text>
-                  <View style={s.growthRow}>
-                    <View style={s.growthPill}>
-                      <Feather name="trending-up" size={11} color="#10B981" />
-                      <Text style={s.growthTxt}>+{stats.monthGrowth}%</Text>
+                {/* Earnings card */}
+                <View style={s.earnCard}>
+                  <View>
+                    <Text style={s.earnLbl}>This Month&apos;s Earnings</Text>
+                    <Text style={s.earnAmt}>₹{stats.monthEarnings.toLocaleString()}</Text>
+                    <View style={s.growthRow}>
+                      <View style={s.growthPill}>
+                        <Feather name="trending-up" size={11} color="#10B981" />
+                        <Text style={s.growthTxt}>+{stats.monthGrowth}%</Text>
+                      </View>
+                      <Text style={s.vsText}>vs last month</Text>
                     </View>
-                    <Text style={s.vsText}>vs last month</Text>
+                  </View>
+                  <View style={s.earnIcon}>
+                    <Feather name="dollar-sign" size={24} color="#fff" />
                   </View>
                 </View>
-                <View style={s.earnIcon}>
-                  <Feather name="dollar-sign" size={24} color="#fff" />
+
+                {/* Stats strip */}
+                <View style={s.statsStrip}>
+                  <View style={s.statItem}>
+                    <Text style={s.statNum}>{stats.jobsDone}</Text>
+                    <Text style={s.statLbl}>Jobs Done</Text>
+                  </View>
+                  <View style={s.statDivider} />
+                  <View style={s.statItem}>
+                    <Text style={[s.statNum, { color: '#FBBF24' }]}>{stats.avgRating}★</Text>
+                    <Text style={s.statLbl}>Rating</Text>
+                  </View>
+                  <View style={s.statDivider} />
+                  <View style={s.statItem}>
+                    <Text style={[s.statNum, { color: '#34D399' }]}>{stats.completionRate}%</Text>
+                    <Text style={s.statLbl}>Completion</Text>
+                  </View>
                 </View>
               </View>
 
-              {/* Stats strip */}
-              <View style={s.statsStrip}>
-                <View style={s.statItem}>
-                  <Text style={s.statNum}>{stats.jobsDone}</Text>
-                  <Text style={s.statLbl}>Jobs Done</Text>
-                </View>
-                <View style={s.statDivider} />
-                <View style={s.statItem}>
-                  <Text style={[s.statNum, { color: '#FBBF24' }]}>{stats.avgRating}★</Text>
-                  <Text style={s.statLbl}>Rating</Text>
-                </View>
-                <View style={s.statDivider} />
-                <View style={s.statItem}>
-                  <Text style={[s.statNum, { color: '#34D399' }]}>{stats.completionRate}%</Text>
-                  <Text style={s.statLbl}>Completion</Text>
-                </View>
+              {/* ── Section header ────────────── */}
+              <View style={s.sectionRow}>
+                <Text style={s.sectionTitle}>Job Requests</Text>
+                <Text style={s.sectionCount}>{filteredJobs.length} jobs</Text>
               </View>
-            </View>
 
-            {/* ── Section header ────────────── */}
-            <View style={s.sectionRow}>
-              <Text style={s.sectionTitle}>Job Requests</Text>
-              <Text style={s.sectionCount}>{filteredJobs.length} jobs</Text>
-            </View>
+              {/* ── Filter chips ──────────────── */}
+              <ScrollView
+                horizontal
+                style={s.filterScroll}
+                contentContainerStyle={s.filterContent}
+                showsHorizontalScrollIndicator={false}
+              >
+                {FILTERS.map((f) => (
+                  <TouchableOpacity
+                    key={f}
+                    style={[s.chip, localFilter === f && s.chipActive]}
+                    onPress={() => {
+                      setLocalFilter(f);
+                      dispatch(providerDashboardSetFilter(f));
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    {localFilter === f && <View style={s.chipDot} />}
+                    <Text style={[s.chipTxt, localFilter === f && s.chipTxtActive]}>{f}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          }
 
-            {/* ── Filter chips ──────────────── */}
-            <ScrollView
-              horizontal
-              style={s.filterScroll}
-              contentContainerStyle={s.filterContent}
-              showsHorizontalScrollIndicator={false}
-            >
-              {FILTERS.map((f) => (
-                <TouchableOpacity
-                  key={f}
-                  style={[s.chip, localFilter === f && s.chipActive]}
-                  onPress={() => {
-                    setLocalFilter(f);
-                    dispatch(providerDashboardSetFilter(f));
-                  }}
-                  activeOpacity={0.75}
-                >
-                  {localFilter === f && <View style={s.chipDot} />}
-                  <Text style={[s.chipTxt, localFilter === f && s.chipTxtActive]}>{f}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </>
-        }
-
-        ListEmptyComponent={
-          <View style={s.empty}>
-            <View style={s.emptyIconWrap}>
-              <Feather name="inbox" size={28} color="#94A3B8" />
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <View style={s.emptyIconWrap}>
+                <Feather name="inbox" size={28} color="#94A3B8" />
+              </View>
+              <Text style={s.emptyTitle}>No jobs found</Text>
+              <Text style={s.emptySub}>Try switching to a different filter</Text>
             </View>
-            <Text style={s.emptyTitle}>No jobs found</Text>
-            <Text style={s.emptySub}>Try switching to a different filter</Text>
-          </View>
-        }
-      />
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -360,4 +378,11 @@ const s = StyleSheet.create({
   emptyIconWrap:{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
   emptyTitle:   { fontSize: 15, fontWeight: '700', color: '#334155' },
   emptySub:     { fontSize: 13, color: '#94A3B8' },
+
+  // ── Loading & Error ───────────────────────
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, gap: 12 },
+  errorText: { fontSize: 16, color: '#EF4444', textAlign: 'center', fontWeight: '500' },
+  retryBtn: { marginTop: 10, backgroundColor: ACCENT, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  retryTxt: { color: '#fff', fontWeight: '600', fontSize: 14 },
 });

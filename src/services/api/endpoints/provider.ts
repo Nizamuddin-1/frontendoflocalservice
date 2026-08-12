@@ -1,38 +1,7 @@
 // ─── Provider endpoints ───────────────────────────────────────────────────────
 // Real HTTP calls to the backend provider APIs.
-import { config } from '@/src/config/env';
-import { apiClient, mockDelay } from '../client';
-import type { Booking } from '@/src/types';
-
-/** Mock provider stats for fallback. */
-const MOCK_PROVIDER_STATS = {
-  todayEarnings: 1200,
-  weeklyEarnings: 8500,
-  monthlyEarnings: 34200,
-  jobsCompleted: 156,
-  jobsInProgress: 2,
-  pendingPayments: 1800,
-  rating: 4.8,
-  completionRate: 98,
-};
-
-/** Mock provider bookings for fallback. */
-const MOCK_PROVIDER_BOOKINGS: Booking[] = [
-  {
-    id: 'pb1', serviceName: 'AC Deep Service', providerName: 'Rahul Sharma',
-    category: 'AC & Cooling', mcIcon: 'air-conditioner', status: 'ongoing',
-    date: 'Today', timeSlot: '2:00 PM - 3:30 PM',
-    address: '42, Koramangala, Bengaluru', price: 599, isPaid: true,
-    bookingRef: 'LF-20260701-001', accentColor: '#1B4FD8', proAvatar: 'RS',
-  },
-  {
-    id: 'pb2', serviceName: 'MCB Panel Replacement', providerName: 'Priya Patel',
-    category: 'Electrical', mcIcon: 'lightning-bolt', status: 'upcoming',
-    date: 'Today', timeSlot: '4:00 PM - 5:00 PM',
-    address: '78, Andheri West, Mumbai', price: 299, isPaid: false,
-    bookingRef: 'LF-20260701-002', accentColor: '#B07D2E', proAvatar: 'PP',
-  },
-];
+import { apiClient } from '../client';
+import type { Booking as ProviderBooking, DashboardJob } from '@/app/provider/src/types';
 
 /** Backend provider stats shape. */
 interface ProviderStats {
@@ -44,13 +13,17 @@ interface ProviderStats {
   pendingPayments: number;
   rating: number;
   completionRate: number;
+  monthEarnings?: number;
+  avgRating?: number;
+  monthGrowth?: number;
+  jobsDone?: number;
 }
 
 /** Backend booking shape from provider routes. */
 interface BackendProviderBooking {
   _id: string;
   serviceName: string;
-  customer: { name: string; initials: string; phone: string };
+  customer: { name: string; initials: string; phone: string; rating?: number; totalOrders?: number };
   status: string;
   providerStatus: string;
   scheduledAt: string;
@@ -67,36 +40,83 @@ interface BackendProviderBooking {
   steps?: any[];
   photos?: string[];
   notes?: string;
+  services?: { _id: string; name: string; quantity: number; price: number }[];
+  durationMins?: number;
+  distanceKm?: number;
 }
 
-function mapProviderBooking(b: BackendProviderBooking): Booking {
+function mapProviderBooking(b: BackendProviderBooking): ProviderBooking {
   return {
     id: b._id,
-    serviceName: b.serviceName,
-    providerName: b.customer?.name || '',
-    category: b.category,
-    mcIcon: b.mcIcon,
-    status: b.status as Booking['status'],
-    date: b.scheduledAt ? new Date(b.scheduledAt).toLocaleDateString() : '',
-    timeSlot: b.timeSlot,
-    address: b.address,
-    price: b.totalAmount,
-    isPaid: b.isPaid,
-    bookingRef: b.bookingRef,
-    accentColor: b.color,
-    proAvatar: b.customer?.initials || '',
-    canTrack: b.canTrack,
+    requestNo: b.bookingRef || b._id.substring(0, 8),
+    status: (b.providerStatus || b.status || 'new') as any,
+    serviceType: b.serviceName,
+    iconBg: b.bg || '#EEF2FF',
+    customer: {
+      id: 'cust_1',
+      name: b.customer?.name || 'Customer',
+      initials: b.customer?.initials || 'C',
+      rating: b.customer?.rating || 4.5,
+      totalOrders: b.customer?.totalOrders || 1,
+      phone: b.customer?.phone || '',
+    },
+    services: b.services?.map(s => ({
+      id: s._id,
+      name: s.name,
+      quantity: s.quantity || 1,
+      price: s.price || b.totalAmount || 0
+    })) || [{ id: '1', name: b.serviceName, quantity: 1, price: b.totalAmount }],
+    location: {
+      address: b.address,
+      city: '',
+      distanceKm: b.distanceKm || 2.5,
+      etaMins: 10,
+    },
+    scheduledAt: b.scheduledAt,
+    durationMins: b.durationMins || 60,
+    payment: b.isPaid ? 'prepaid' : 'cash',
+    totalAmount: b.totalAmount,
+  };
+}
+
+function mapDashboardJob(b: BackendProviderBooking): DashboardJob {
+  const dateObj = new Date(b.scheduledAt);
+  const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  
+  return {
+    id: b._id,
+    initials: b.customer?.initials || 'C',
+    avatarBg: b.bg || '#EEF2FF',
+    avatarText: b.color || '#6366F1',
+    name: b.customer?.name || 'Customer',
+    jobType: b.serviceName,
+    status: (b.providerStatus || b.status || 'new') as any,
+    timeLabel: `Today · ${timeStr} · 2.5 km`,
+    amount: b.totalAmount,
+    screen: 'BookingDetails', // default screen for new/active jobs
   };
 }
 
 export const providerApi = {
-  async getStats(): Promise<ProviderStats> {
-    if (config.useMock) return mockDelay(MOCK_PROVIDER_STATS);
-    return apiClient.get<ProviderStats>('/provider/stats');
+  async getStats(): Promise<any> {
+    const stats = await apiClient.get<ProviderStats>('/provider/stats');
+    // Map to expected DashboardStats shape
+    return {
+      todayJobs: stats.jobsInProgress || 0,
+      monthEarnings: stats.monthEarnings || stats.monthlyEarnings || 0,
+      avgRating: stats.avgRating || stats.rating || 0,
+      completionRate: stats.completionRate || 0,
+      jobsDone: stats.jobsDone || stats.jobsCompleted || 0,
+      monthGrowth: stats.monthGrowth || 0,
+    };
   },
 
-  async getBookings(): Promise<Booking[]> {
-    if (config.useMock) return mockDelay(MOCK_PROVIDER_BOOKINGS);
+  async getDashboardJobs(): Promise<DashboardJob[]> {
+    const data = await apiClient.get<BackendProviderBooking[]>('/provider/bookings');
+    return data.map(mapDashboardJob);
+  },
+
+  async getBookings(): Promise<ProviderBooking[]> {
     const data = await apiClient.get<BackendProviderBooking[]>('/provider/bookings');
     return data.map(mapProviderBooking);
   },
@@ -105,17 +125,14 @@ export const providerApi = {
     id: string,
     status: string,
   ): Promise<{ _id: string; status: string; providerStatus: string }> {
-    if (config.useMock) return mockDelay({ _id: id, status, providerStatus: status });
     return apiClient.put(`/provider/bookings/${id}/status`, { status });
   },
 
   async toggleAvailability(): Promise<{ isAvailable: boolean }> {
-    if (config.useMock) return mockDelay({ isAvailable: true });
     return apiClient.put('/provider/availability');
   },
 
   async getProfile(): Promise<any> {
-    if (config.useMock) return mockDelay(null);
     return apiClient.get('/provider/profile');
   },
 };

@@ -61,8 +61,14 @@ const RowItem: React.FC<RowConfig> = ({ iconName, iconBg, iconColor, title, subt
 
 export default function ProfileScreen() {
   const dispatch = useAppDispatch();
-  const { data: profile } = useAppSelector((s) => s.provider.profile);
+  const { data: profile, isLoading } = useAppSelector((s) => s.provider.profile);
   const { isAvailable } = useAppSelector((s) => s.provider.availability);
+
+  React.useEffect(() => {
+    if (!profile) {
+      dispatch(require('@/src/redux/actions/appActions').fetchProfile() as any);
+    }
+  }, [dispatch, profile]);
 
   const handleLogout = useCallback(() => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -90,13 +96,13 @@ export default function ProfileScreen() {
           {/* Avatar */}
           <View style={s.avatarSection}>
             <View style={s.avatar}>
-              <Text style={s.avatarTxt}>{profile?.initials ?? ''}</Text>
+              <Text style={s.avatarTxt}>{profile?.initials ?? 'PR'}</Text>
             </View>
             <View style={s.avatarBadge}>
               <Feather name="check" size={10} color="#fff" />
             </View>
           </View>
-          <Text style={s.profileName}>{profile?.name ?? ''}</Text>
+          <Text style={s.profileName}>{profile?.name ?? 'Loading...'}</Text>
           <Text style={s.profileCat}>{profile?.category ?? ''}</Text>
           {/* Rating */}
           <View style={s.ratingRow}>
@@ -106,7 +112,43 @@ export default function ProfileScreen() {
             <Text style={s.ratingTxt}>{profile?.rating ?? 0} ({profile?.reviewCount ?? 0} reviews)</Text>
           </View>
         </View>
- 
+
+        {/* ── Stats Row ────────────────────── */}
+        <View style={s.statsRow}>
+          <View style={s.statBox}>
+            <Text style={s.statVal}>{profile?.jobsDone ?? 0}</Text>
+            <Text style={s.statLbl}>Jobs</Text>
+          </View>
+          <View style={{ width: 1, backgroundColor: Colors.border }} />
+          <View style={s.statBox}>
+            <Text style={s.statVal}>{profile?.completionRate ?? 0}%</Text>
+            <Text style={s.statLbl}>Completion</Text>
+          </View>
+          <View style={{ width: 1, backgroundColor: Colors.border }} />
+          <View style={s.statBox}>
+            <Text style={s.statVal}>₹{((profile?.totalEarned ?? 0)/1000).toFixed(1)}k</Text>
+            <Text style={s.statLbl}>Earned</Text>
+          </View>
+        </View>
+
+        {/* ── Toggle Card ──────────────────── */}
+        <View style={s.toggleCard}>
+          <View style={[s.toggleIcon, { backgroundColor: isAvailable ? Colors.emerald2 : Colors.surface }]}>
+            <Feather name="power" size={18} color={isAvailable ? Colors.emerald3 : Colors.ink3} />
+          </View>
+          <View style={s.toggleBody}>
+            <Text style={s.toggleTitle}>{isAvailable ? 'Taking new jobs' : 'Currently offline'}</Text>
+            <Text style={[s.toggleSub, { color: isAvailable ? Colors.emerald3 : Colors.ink4 }]}>
+              {isAvailable ? 'You are visible to customers' : 'Go online to receive jobs'}
+            </Text>
+          </View>
+          <Switch
+            value={isAvailable}
+            onValueChange={() => dispatch(providerAvailabilityToggle() as any)}
+            trackColor={{ false: Colors.border, true: Colors.emerald }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
  
         {/* ── Account Section ──────────────── */}
         <Text style={s.groupLabel}>ACCOUNT</Text>

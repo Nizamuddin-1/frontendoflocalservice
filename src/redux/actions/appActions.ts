@@ -109,7 +109,7 @@ export const cancelBooking = (id: string) => async (dispatch: any) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const servicesFetchRequest = () => ({ type: ActionTypes.SERVICES_FETCH_REQUEST });
-export const servicesFetchSuccess = (payload: any[]) => ({
+export const servicesFetchSuccess = (payload: { services: any[], categories: any[] }) => ({
   type: ActionTypes.SERVICES_FETCH_SUCCESS,
   payload,
 });
@@ -137,8 +137,11 @@ export const servicesSetSelected = (service: any) => ({
 export const fetchServices = () => async (dispatch: any) => {
   dispatch(servicesFetchRequest());
   try {
-    const services = await servicesApi.listServices();
-    dispatch(servicesFetchSuccess(services));
+    const [services, categories] = await Promise.all([
+      servicesApi.listServices(),
+      servicesApi.listCategories(),
+    ]);
+    dispatch(servicesFetchSuccess({ services, categories }));
   } catch (e) {
     dispatch(servicesFetchFailure(e instanceof Error ? e.message : 'Failed to load services'));
   }
@@ -296,7 +299,7 @@ export const fetchProviderDashboard = () => async (dispatch: any) => {
   try {
     const [stats, jobs] = await Promise.all([
       providerApi.getStats(),
-      providerApi.getBookings(),
+      providerApi.getDashboardJobs(),
     ]);
     dispatch(providerDashboardFetchSuccess({ stats, jobs }));
   } catch (e) {

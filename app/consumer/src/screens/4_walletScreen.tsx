@@ -30,7 +30,8 @@ import {
   TxRow,
   AddMoneySheet,
 } from "@/src/components/wallet";
-import { OFFERS, TX_TIME_TABS } from "@/src/services/mock";
+import { TX_TIME_TABS } from "@/src/services/mock";
+import { servicesApi } from "@/src/services/api";
 import { useAppSelector, useAppDispatch } from "@/src/redux/store";
 import { fetchWallet, addMoney } from "@/src/redux/actions/appActions";
 import type { Transaction } from "@/src/types";
@@ -42,12 +43,28 @@ export default function WalletScreen() {
   const [showAddSheet, setShowAddSheet]   = useState(false);
   const [txTimeFilter, setTxTimeFilter]   = useState("all");
   const [activeSection, setActiveSection] = useState<"transactions" | "offers">("transactions");
+  const [offers, setOffers] = useState<any[]>([]);
+  const [isLoadingOffers, setIsLoadingOffers] = useState(true);
 
   useEffect(() => {
     if (transactions.length === 0) {
       dispatch(fetchWallet());
     }
   }, [dispatch, transactions.length]);
+
+  useEffect(() => {
+    let mounted = true;
+    servicesApi.listOffers().then(fetched => {
+      if (mounted) {
+        setOffers(fetched || []);
+        setIsLoadingOffers(false);
+      }
+    }).catch(err => {
+      console.error(err);
+      if (mounted) setIsLoadingOffers(false);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   // time-based filter: match against tx.date field
   const filteredTx = txTimeFilter === "all"
@@ -152,7 +169,11 @@ export default function WalletScreen() {
               })}
             </ScrollView>
 
-            {filteredTx.length === 0 ? (
+            {isLoading ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ fontFamily: F.bodyReg, color: C.slateLight }}>Loading transactions...</Text>
+              </View>
+            ) : filteredTx.length === 0 ? (
               <View style={styles.txEmpty}>
                 <MaterialCommunityIcons name="receipt" size={36} color={C.slateLight} />
                 <Text style={[styles.txEmptyText, { fontFamily: F.bodyMed }]}>No transactions here</Text>
@@ -212,7 +233,13 @@ export default function WalletScreen() {
             </View>
 
             <Text style={[styles.offersHeading, { fontFamily: F.displaySemi }]}>Available Offers</Text>
-            {OFFERS.map(offer => <OfferCard key={offer.id} offer={offer} />)}
+            {isLoadingOffers ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ fontFamily: F.bodyReg, color: C.slateLight }}>Loading offers...</Text>
+              </View>
+            ) : (
+              offers.map(offer => <OfferCard key={offer._id || offer.id} offer={offer} />)
+            )}
 
             <View style={styles.referralCard}>
               <View style={styles.referralLeft}>
