@@ -7,7 +7,7 @@
 
 export const config = {
   /** Base URL for the REST API. Override via EXPO_PUBLIC_API_URL env var. */
-  apiBaseUrl: 'http://localhost:4000/api',
+  apiBaseUrl: 'http://10.200.82.121:4000/api',
 
   /** When true, the API layer returns local mock data instead of hitting the network. */
   useMock: false,

@@ -40,7 +40,7 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     <View style={tabStyles.container}>
       {state.routes.map((route, index) => {
         const isActive = state.index === index;
-        const icon     = TAB_ICONS[route.name as keyof MainTabParamList];
+        const icon     = TAB_ICONS[route.name as keyof MainTabParamList] || '●';
 
         return (
           <TouchableOpacity
@@ -127,29 +127,30 @@ const slideUpOptions: StackNavigationOptions = {
 
 export default function AppNavigator() {
   return (
-    // NO NavigationContainer here
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        cardStyleInterpolator: ({ current, layouts }) => ({
-          cardStyle: {
-            transform: [
-              {
-                translateX: current.progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [layouts.screen.width * 0.25, 0],
-                }),
-              },
-            ],
-            opacity: current.progress,
-          },
-        }),
-      }}
-    >
-      <Stack.Screen name="MainTabs"       component={MainTabs} />
-      <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} options={slideUpOptions} />
-      <Stack.Screen name="ActiveJob"      component={ActiveJobScreen} />
-      <Stack.Screen name="JobComplete"    component={JobCompleteScreen} options={slideUpOptions} />
-    </Stack.Navigator>
+    <NavigationContainer independent={true}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          cardStyleInterpolator: ({ current, layouts }) => ({
+            cardStyle: {
+              transform: [
+                {
+                  translateX: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [layouts.screen.width * 0.25, 0],
+                  }),
+                },
+              ],
+              opacity: current.progress,
+            },
+          }),
+        }}
+      >
+        <Stack.Screen name="MainTabs"       component={MainTabs} />
+        <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} options={slideUpOptions} />
+        <Stack.Screen name="ActiveJob"      component={ActiveJobScreen} />
+        <Stack.Screen name="JobComplete"    component={JobCompleteScreen} options={slideUpOptions} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }

@@ -3,7 +3,7 @@
 //      import { authApi, bookingsApi, walletApi, servicesApi, providerApi, apiClient } from '@/src/services/api';
 // ─────────────────────────────────────────────────────────────────────────────
 
-export { apiClient, ApiError, mockDelay } from './client';
+export { apiClient, ApiError, mockDelay, getStoredToken, clearStoredTokens, setStoredToken, setStoredRefreshToken } from './client';
 export type { RequestOptions } from './client';
 
 export { authApi } from './endpoints/auth';

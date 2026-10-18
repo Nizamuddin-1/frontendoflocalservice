@@ -12,7 +12,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { StatusChip } from '../components';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
-import { providerDashboardSetFilter, fetchProviderDashboard } from '@/src/redux/actions/appActions';
+import { providerDashboardSetFilter, fetchProviderDashboard, fetchProviderProfile } from '@/src/redux/actions/appActions';
 import type { RootStackParamList, DashboardJob, FilterOption } from '../types';
 
 type NavProp = StackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -36,13 +36,19 @@ const ACCENT    = '#6366F1';
 export default function DashboardScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
   const { stats, jobs: DASHBOARD_JOBS, activeFilter, isLoading, error } = useAppSelector((s) => s.provider.dashboard);
+  const { data: profile } = useAppSelector((s) => s.provider.profile);
   const DASHBOARD_STATS = stats;
   const [localFilter, setLocalFilter] = useState<FilterOption>('All Jobs');
 
+  const providerName = profile?.name || 'Professional';
+  const providerInitials = profile?.initials || (profile?.name ? profile.name.slice(0, 2).toUpperCase() : 'PR');
+
   useEffect(() => {
     dispatch(fetchProviderDashboard() as any);
+    dispatch(fetchProviderProfile() as any);
     const unsubscribe = navigation.addListener('focus', () => {
       dispatch(fetchProviderDashboard() as any);
+      dispatch(fetchProviderProfile() as any);
     });
     return unsubscribe;
   }, [dispatch, navigation]);
@@ -140,13 +146,13 @@ export default function DashboardScreen({ navigation }: Props) {
                 <View style={s.heroTop}>
                   <View>
                     <Text style={s.heroGreet}>Good morning 👋</Text>
-                    <Text style={s.heroName}>Rajesh Kumar</Text>
+                    <Text style={s.heroName}>{providerName}</Text>
                   </View>
                   <TouchableOpacity
                     style={s.avatarBtn}
                     onPress={() => navigation.navigate('MainTabs')}
                   >
-                    <Text style={s.avatarTxt}>RK</Text>
+                    <Text style={s.avatarTxt}>{providerInitials}</Text>
                     <View style={s.onlineDot} />
                   </TouchableOpacity>
                 </View>

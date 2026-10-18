@@ -11,7 +11,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { Divider } from '../components';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
-import { providerAvailabilityToggle, fetchProviderProfile } from '@/src/redux/actions/appActions';
+import { providerAvailabilityToggle, fetchProviderProfile, logout } from '@/src/redux/actions/appActions';
 import { EditProfileModal } from '@/src/components/profile';
 
 interface RowConfig {
@@ -25,11 +25,7 @@ interface RowConfig {
   onPress?: () => void;
 }
 
-const ACCOUNT_ROWS: RowConfig[] = [
-  { iconName: 'user',        iconBg: '#EFF6FF', iconColor: '#1D4ED8', title: 'Personal Info',      subtitle: 'Name, phone, address'       },
-  { iconName: 'tool',        iconBg: '#EDE9FE', iconColor: '#5B21B6', title: 'Service Categories', subtitle: 'AC, Appliances, Electrical'  },
-  { iconName: 'credit-card', iconBg: '#ECFDF5', iconColor: '#047857', title: 'Bank Account',       subtitle: 'HDFC ···· 4821', badge: 'Verified', badgeColor: Colors.emerald3 },
-];
+
 
 const DOCUMENT_ROWS: RowConfig[] = [
   { iconName: 'file-text', iconBg: '#FFFBEB', iconColor: '#92400E', title: 'ID Verification',  subtitle: 'Aadhaar card verified', badge: 'Done', badgeColor: Colors.emerald3 },
@@ -68,17 +64,57 @@ export default function ProfileScreen() {
   const [showEdit, setShowEdit] = useState(false);
 
   React.useEffect(() => {
-    if (!profile) {
-      dispatch(fetchProviderProfile() as any);
-    }
-  }, [dispatch, profile]);
+    dispatch(fetchProviderProfile() as any);
+  }, [dispatch]);
+
+  const categorySubtitle =
+    profile?.category ||
+    (Array.isArray(profile?.serviceCategories) && profile.serviceCategories.length > 0
+      ? profile.serviceCategories.join(', ')
+      : 'Select categories');
+
+  const bankSubtitle = profile?.bank?.bankName
+    ? `${profile.bank.bankName} ···· ${profile.bank.maskedNo || '••••'}`
+    : 'Add bank account';
+
+  const accountRows: RowConfig[] = [
+    {
+      iconName: 'user',
+      iconBg: '#EFF6FF',
+      iconColor: '#1D4ED8',
+      title: 'Personal Info',
+      subtitle: profile?.address ? `${profile.name}, ${profile.address}` : 'Name, phone, address',
+    },
+    {
+      iconName: 'tool',
+      iconBg: '#EDE9FE',
+      iconColor: '#5B21B6',
+      title: 'Service Categories',
+      subtitle: categorySubtitle,
+    },
+    {
+      iconName: 'credit-card',
+      iconBg: '#ECFDF5',
+      iconColor: '#047857',
+      title: 'Bank Account',
+      subtitle: bankSubtitle,
+      badge: profile?.bank?.verified ? 'Verified' : undefined,
+      badgeColor: Colors.emerald3,
+    },
+  ];
 
   const handleLogout = useCallback(() => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => {} },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: () => {
+          dispatch(logout() as any);
+        },
+      },
     ]);
-  }, []);
+  }, [dispatch]);
 
   return (
     <SafeAreaView style={s.safe}>
@@ -156,13 +192,13 @@ export default function ProfileScreen() {
         {/* ── Account Section ──────────────── */}
         <Text style={s.groupLabel}>ACCOUNT</Text>
         <View style={s.card}>
-          {ACCOUNT_ROWS.map((row, i) => (
+          {accountRows.map((row, i) => (
             <React.Fragment key={row.title}>
               <RowItem
                 {...row}
                 onPress={row.title === 'Personal Info' ? () => setShowEdit(true) : undefined}
               />
-              {i < ACCOUNT_ROWS.length - 1 && <Divider marginLeft={Spacing.lg + 38 + 12} />}
+              {i < accountRows.length - 1 && <Divider marginLeft={Spacing.lg + 38 + 12} />}
             </React.Fragment>
           ))}
         </View>

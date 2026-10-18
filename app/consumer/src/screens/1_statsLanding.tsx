@@ -42,7 +42,7 @@ import ProfileScreen from "./5_profileScreen";
 import { Colors as C, Fonts as F } from "@/src/theme";
 import { servicesApi } from "@/src/services/api";
 import { useAppSelector, useAppDispatch } from "@/src/redux/store";
-import { fetchWallet } from "@/src/redux/actions/appActions";
+import { fetchWallet, fetchProfile } from "@/src/redux/actions/appActions";
 import {
   PromoCard,
   ServiceTile,
@@ -55,8 +55,22 @@ const { width } = Dimensions.get("window");
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function HomeScreen() {
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((s) => s.consumer.profile);
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [promoIndex, setPromoIndex] = useState(0);
+
+  const userName = user?.name || "Welcome";
+  const userLocation = user?.location || "Select location";
+  const userInitials = user?.name
+    ? user.name
+        .split(" ")
+        .filter(Boolean)
+        .map((n: string) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "LF";
   const [promos, setPromos] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +92,7 @@ export default function HomeScreen() {
 
   // Fetch Data
   useEffect(() => {
+    dispatch(fetchProfile());
     let mounted = true;
     Promise.all([
       servicesApi.listPromos(),
@@ -125,7 +140,7 @@ export default function HomeScreen() {
                 {/* Location */}
                 <TouchableOpacity style={styles.locationChip} activeOpacity={0.75}>
                   <Ionicons name="location-sharp" size={13} color={C.terra} />
-                  <Text style={[styles.locationText, { fontFamily: F.bodySemi }]}>Civil Lines, Agra</Text>
+                  <Text style={[styles.locationText, { fontFamily: F.bodySemi }]} numberOfLines={1}>{userLocation}</Text>
                   <Ionicons name="chevron-down" size={11} color={C.inkLight} />
                 </TouchableOpacity>
 
@@ -135,8 +150,8 @@ export default function HomeScreen() {
                     <Ionicons name="notifications-outline" size={20} color={C.inkMid} />
                     <View style={styles.notifBadge} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.8}>
-                    <Text style={[styles.avatarText, { fontFamily: F.displaySemi }]}>AM</Text>
+                  <TouchableOpacity style={styles.avatarBtn} activeOpacity={0.8} onPress={() => setActiveTab('profile')}>
+                    <Text style={[styles.avatarText, { fontFamily: F.displaySemi }]}>{userInitials}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -163,7 +178,7 @@ export default function HomeScreen() {
                     {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }).toUpperCase()}
                   </Text>
                   <Text style={[styles.greetName, { fontFamily: F.displayBold }]}>
-                    Arjun Malhotra
+                    {userName}
                   </Text>
 
                 </View>

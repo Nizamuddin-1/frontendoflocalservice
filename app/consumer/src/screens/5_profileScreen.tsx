@@ -45,10 +45,8 @@ export default function ProfileScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!user) {
-      dispatch(fetchProfile());
-    }
-  }, [dispatch, user]);
+    dispatch(fetchProfile());
+  }, [dispatch]);
 
   const handleToggle = (key: ToggleKey) => {
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }));

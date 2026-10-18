@@ -16,7 +16,6 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import { C, F } from './tokens';
 import { styles } from './profile.styles';
-import { USER } from '@/src/services/mock';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
 import { updateConsumerProfile, updateProviderProfile } from '@/src/redux/actions/appActions';
 
@@ -56,7 +55,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
     initialData ||
     (role === 'provider'
       ? providerData || { name: '', email: '', phone: '', address: '' }
-      : consumerUser || USER);
+      : consumerUser || { name: '', email: '', phone: '', location: '' });
 
   const [name, setName] = useState(activeData?.name || '');
   const [email, setEmail] = useState(activeData?.email || '');
@@ -73,7 +72,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         initialData ||
         (role === 'provider'
           ? providerData || { name: '', email: '', phone: '', address: '' }
-          : consumerUser || USER);
+          : consumerUser || { name: '', email: '', phone: '', location: '' });
 
       setName(current?.name || '');
       setEmail(current?.email || '');

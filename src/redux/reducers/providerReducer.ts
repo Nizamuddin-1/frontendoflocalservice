@@ -16,6 +16,7 @@ import {
   PROFILE_UPDATE_REQUEST, PROFILE_UPDATE_SUCCESS, PROFILE_UPDATE_FAILURE,
   PROVIDER_PROFILE_FETCH_REQUEST, PROVIDER_PROFILE_FETCH_SUCCESS, PROVIDER_PROFILE_FETCH_FAILURE,
   PROVIDER_PROFILE_UPDATE_REQUEST, PROVIDER_PROFILE_UPDATE_SUCCESS, PROVIDER_PROFILE_UPDATE_FAILURE,
+  AUTH_LOGOUT,
 } from '../actions/actionTypes';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -337,6 +338,9 @@ export default function providerReducer(
         ...state,
         profile: { ...state.profile, isLoading: false, error: action.payload },
       };
+
+    case AUTH_LOGOUT:
+      return initialState;
 
     default:
       return state;

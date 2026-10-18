@@ -47,10 +47,10 @@ interface BackendProviderBooking {
 
 function mapProviderBooking(b: BackendProviderBooking): ProviderBooking {
   return {
-    id: b._id,
-    requestNo: b.bookingRef || b._id.substring(0, 8),
+    id: b._id || '',
+    requestNo: b.bookingRef || (typeof b._id === 'string' ? b._id.substring(0, 8) : 'REQ-001'),
     status: (b.providerStatus || b.status || 'new') as any,
-    serviceType: b.serviceName,
+    serviceType: b.serviceName || b.category || 'Service',
     iconBg: b.bg || '#EEF2FF',
     customer: {
       id: 'cust_1',
@@ -60,39 +60,41 @@ function mapProviderBooking(b: BackendProviderBooking): ProviderBooking {
       totalOrders: b.customer?.totalOrders || 1,
       phone: b.customer?.phone || '',
     },
-    services: b.services?.map(s => ({
-      id: s._id,
-      name: s.name,
-      quantity: s.quantity || 1,
-      price: s.price || b.totalAmount || 0
-    })) || [{ id: '1', name: b.serviceName, quantity: 1, price: b.totalAmount }],
+    services: Array.isArray(b.services) && b.services.length > 0
+      ? b.services.map(s => ({
+          id: s._id || '1',
+          name: s.name || b.serviceName || 'Service',
+          quantity: s.quantity || 1,
+          price: s.price || b.totalAmount || 0,
+        }))
+      : [{ id: '1', name: b.serviceName || 'Service', quantity: 1, price: b.totalAmount || 0 }],
     location: {
-      address: b.address,
+      address: b.address || '',
       city: '',
       distanceKm: b.distanceKm || 2.5,
       etaMins: 10,
     },
-    scheduledAt: b.scheduledAt,
+    scheduledAt: b.scheduledAt || new Date().toISOString(),
     durationMins: b.durationMins || 60,
     payment: b.isPaid ? 'prepaid' : 'cash',
-    totalAmount: b.totalAmount,
+    totalAmount: b.totalAmount || 0,
   };
 }
 
 function mapDashboardJob(b: BackendProviderBooking): DashboardJob {
-  const dateObj = new Date(b.scheduledAt);
+  const dateObj = b.scheduledAt ? new Date(b.scheduledAt) : new Date();
   const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
   
   return {
-    id: b._id,
+    id: b._id || '',
     initials: b.customer?.initials || 'C',
     avatarBg: b.bg || '#EEF2FF',
     avatarText: b.color || '#6366F1',
     name: b.customer?.name || 'Customer',
-    jobType: b.serviceName,
+    jobType: b.serviceName || 'Service',
     status: (b.providerStatus || b.status || 'new') as any,
     timeLabel: `Today · ${timeStr} · 2.5 km`,
-    amount: b.totalAmount,
+    amount: b.totalAmount || 0,
     screen: 'BookingDetails', // default screen for new/active jobs
   };
 }
@@ -102,23 +104,23 @@ export const providerApi = {
     const stats = await apiClient.get<ProviderStats>('/provider/stats');
     // Map to expected DashboardStats shape
     return {
-      todayJobs: stats.jobsInProgress || 0,
-      monthEarnings: stats.monthEarnings || stats.monthlyEarnings || 0,
-      avgRating: stats.avgRating || stats.rating || 0,
-      completionRate: stats.completionRate || 0,
-      jobsDone: stats.jobsDone || stats.jobsCompleted || 0,
-      monthGrowth: stats.monthGrowth || 0,
+      todayJobs: stats?.jobsInProgress || 0,
+      monthEarnings: stats?.monthEarnings || stats?.monthlyEarnings || 0,
+      avgRating: stats?.avgRating || stats?.rating || 0,
+      completionRate: stats?.completionRate || 0,
+      jobsDone: stats?.jobsDone || stats?.jobsCompleted || 0,
+      monthGrowth: stats?.monthGrowth || 0,
     };
   },
 
   async getDashboardJobs(): Promise<DashboardJob[]> {
     const data = await apiClient.get<BackendProviderBooking[]>('/provider/bookings');
-    return data.map(mapDashboardJob);
+    return Array.isArray(data) ? data.map(mapDashboardJob) : [];
   },
 
   async getBookings(): Promise<ProviderBooking[]> {
     const data = await apiClient.get<BackendProviderBooking[]>('/provider/bookings');
-    return data.map(mapProviderBooking);
+    return Array.isArray(data) ? data.map(mapProviderBooking) : [];
   },
 
   async updateBookingStatus(

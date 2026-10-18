@@ -3,8 +3,7 @@
 //  Updated to call real backend APIs via the service layer.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { authApi, bookingsApi, walletApi, servicesApi, providerApi } from '@/src/services/api';
-import { USER } from '@/src/services/mock';
+import { authApi, bookingsApi, walletApi, servicesApi, providerApi, getStoredToken, clearStoredTokens } from '@/src/services/api';
 import type { BookingStatus } from '@/src/types';
 import * as ActionTypes from './actionTypes';
 
@@ -42,8 +41,10 @@ export const login = (email: string, password: string) => async (dispatch: any) 
 export const logout = () => async (dispatch: any, getState: any) => {
   const { auth } = getState().consumer;
   try {
-    if (auth.token) await authApi.logout(auth.token);
+    const token = auth?.token || (await getStoredToken());
+    if (token) await authApi.logout(token);
   } finally {
+    await clearStoredTokens();
     dispatch(authLogout());
   }
 };
@@ -239,16 +240,21 @@ export const fetchProfile = () => async (dispatch: any, getState: any) => {
   dispatch(profileFetchRequest());
   try {
     const { auth } = getState().consumer;
-    if (auth.token) {
-      const profile = await authApi.me(auth.token);
+    let token = auth?.token;
+    if (!token) {
+      token = await getStoredToken();
+      if (token) {
+        dispatch(authLoginSuccess({ user: null, token }));
+      }
+    }
+    if (token) {
+      const profile = await authApi.me(token);
       dispatch(profileFetchSuccess(profile));
     } else {
-      // Fallback to mock data if no token
-      dispatch(profileFetchSuccess(USER));
+      dispatch(profileFetchFailure('User not authenticated'));
     }
-  } catch (e) {
-    // Fallback to mock on error
-    dispatch(profileFetchSuccess(USER));
+  } catch (e: any) {
+    dispatch(profileFetchFailure(e instanceof Error ? e.message : 'Failed to fetch profile'));
   }
 };
 
@@ -256,8 +262,10 @@ export const updateConsumerProfile = (data: any) => async (dispatch: any, getSta
   dispatch(profileUpdateRequest());
   try {
     const { auth } = getState().consumer;
-    const updated = await authApi.updateProfile(data, auth.token);
+    const token = auth?.token || (await getStoredToken());
+    const updated = await authApi.updateProfile(data, token);
     dispatch(profileUpdateSuccess(updated));
+    dispatch(fetchProfile());
     return { success: true, data: updated };
   } catch (e: any) {
     const message = e instanceof Error ? e.message : 'Failed to update profile';
@@ -283,6 +291,7 @@ export const updateProviderProfile = (data: any) => async (dispatch: any) => {
   try {
     const updated = await providerApi.updateProfile(data);
     dispatch(providerProfileUpdateSuccess(updated));
+    dispatch(fetchProviderProfile());
     return { success: true, data: updated };
   } catch (e: any) {
     const message = e instanceof Error ? e.message : 'Failed to update profile';

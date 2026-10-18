@@ -5,13 +5,14 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Animated, StyleSheet, SafeAreaView, StatusBar, ActivityIndicator
+  Animated, StyleSheet, StatusBar, ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
-import { fetchProviderBookings, fetchProfile, declineProviderBooking } from '@/src/redux/actions/appActions';
+import { fetchProviderBookings, fetchProviderProfile, declineProviderBooking } from '@/src/redux/actions/appActions';
 import type { RootStackParamList } from '../types';
 
 type HomeNavProp = StackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -21,69 +22,94 @@ const ACCENT = '#6366F1';
 
 export default function HomeScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
-  const { providerBookings, profile } = useAppSelector((s) => s.provider);
-  const BOOKINGS = providerBookings.list;
+  const providerState = useAppSelector((s) => s.provider);
+  const providerBookings = providerState?.providerBookings ?? { list: [], isLoading: false, error: null };
+  const profile = providerState?.profile ?? { data: null, isLoading: false, error: null };
+
+  const BOOKINGS = Array.isArray(providerBookings.list) ? providerBookings.list : [];
   const PROVIDER_PROFILE = profile.data;
 
   // ── Entrance animations ──────────────────────
-  const heroFade  = useRef(new Animated.Value(0)).current;
-  const cardSlide = useRef(new Animated.Value(28)).current;
-  const cardFade  = useRef(new Animated.Value(0)).current;
+  // Initialized to 1 so the screen is never stuck at 0 opacity (blank white)
+  const heroFade  = useRef(new Animated.Value(1)).current;
+  const cardSlide = useRef(new Animated.Value(0)).current;
+  const cardFade  = useRef(new Animated.Value(1)).current;
   const pulse     = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     dispatch(fetchProviderBookings() as any);
-    dispatch(fetchProfile() as any);
+    dispatch(fetchProviderProfile() as any);
 
     const unsubscribe = navigation.addListener('focus', () => {
       dispatch(fetchProviderBookings() as any);
-      dispatch(fetchProfile() as any);
+      dispatch(fetchProviderProfile() as any);
     });
 
-    Animated.parallel([
-      Animated.timing(heroFade,  { toValue: 1, duration: 320, useNativeDriver: true }),
-      Animated.timing(cardFade,  { toValue: 1, duration: 400, delay: 160, useNativeDriver: true }),
-      Animated.timing(cardSlide, { toValue: 0, duration: 400, delay: 160, useNativeDriver: true }),
-    ]).start();
-
+    // Smooth pulse animation with useNativeDriver: false for cross-platform compatibility (Web & Native)
     const pulseAnim = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.5, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1.0, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.5, duration: 800, useNativeDriver: false }),
+        Animated.timing(pulse, { toValue: 1.0, duration: 800, useNativeDriver: false }),
       ])
     );
     pulseAnim.start();
+
     return () => {
       pulseAnim.stop();
       unsubscribe();
     };
-  }, [dispatch, navigation]);
+  }, [dispatch, navigation, pulse]);
 
-  const newBooking = BOOKINGS.find((b: any) => b.status === 'new' || b.status === 'upcoming') ?? BOOKINGS[0] ?? {
+  const newBooking = BOOKINGS.find((b: any) => b?.status === 'new' || b?.status === 'upcoming') ?? BOOKINGS[0] ?? {
     id: '',
     serviceType: '',
-    services: [{ quantity: 0 }],
-    customer: { name: '' },
+    services: [{ quantity: 1 }],
+    customer: { name: 'Customer' },
     location: { distanceKm: 0 },
     totalAmount: 0,
   };
 
   const handleViewBooking = useCallback(() => {
-    if (newBooking.id) {
+    if (newBooking?.id) {
       navigation.push('BookingDetails', { bookingId: newBooking.id });
     }
-  }, [navigation, newBooking.id]);
+  }, [navigation, newBooking?.id]);
 
   const handleDecline = useCallback(async () => {
-    if (newBooking.id) {
+    if (newBooking?.id) {
       await dispatch(declineProviderBooking(newBooking.id) as any);
     }
-  }, [dispatch, newBooking.id]);
+  }, [dispatch, newBooking?.id]);
 
-  if (profile.isLoading || providerBookings.isLoading) {
+  const isInitialLoading = (profile.isLoading || providerBookings.isLoading) && !PROVIDER_PROFILE && BOOKINGS.length === 0;
+  const hasError = (profile.error || providerBookings.error) && !PROVIDER_PROFILE && BOOKINGS.length === 0;
+  const errorMessage = profile.error || providerBookings.error || 'Failed to load home data';
+
+  const handleRetry = useCallback(() => {
+    dispatch(fetchProviderBookings() as any);
+    dispatch(fetchProviderProfile() as any);
+  }, [dispatch]);
+
+  if (isInitialLoading) {
     return (
-      <SafeAreaView style={[s.safe, { justifyContent: 'center', alignItems: 'center' }]}>
+      <SafeAreaView style={[s.safe, s.centerContainer]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         <ActivityIndicator size="large" color={ACCENT} />
+      </SafeAreaView>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <SafeAreaView style={[s.safe, s.centerContainer]}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={s.errorContainer}>
+          <Feather name="alert-circle" size={40} color="#EF4444" />
+          <Text style={s.errorText}>{errorMessage}</Text>
+          <TouchableOpacity style={s.retryBtn} onPress={handleRetry}>
+            <Text style={s.retryTxt}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -105,7 +131,7 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={s.heroTop}>
             <View>
               <Text style={s.greeting}>Good morning 👋</Text>
-              <Text style={s.heroName}>{PROVIDER_PROFILE?.name ?? ''}</Text>
+              <Text style={s.heroName}>{PROVIDER_PROFILE?.name || 'Professional'}</Text>
             </View>
             <View style={s.heroActions}>
               {/* Online badge */}
@@ -116,7 +142,7 @@ export default function HomeScreen({ navigation }: Props) {
               {/* Bell */}
               <TouchableOpacity
                 style={s.iconBtn}
-                onPress={() => navigation.navigate('MainTabs')}
+                onPress={() => (navigation as any).navigate('Dashboard')}
               >
                 <Feather name="bell" size={18} color="#334155" />
                 <View style={s.notifDot} />
@@ -217,7 +243,7 @@ export default function HomeScreen({ navigation }: Props) {
 
             <TouchableOpacity
               style={s.qaCard}
-              onPress={() => navigation.navigate('MainTabs')}
+              onPress={() => (navigation as any).navigate('Dashboard')}
               activeOpacity={0.75}
             >
               <View style={[s.qaIcon, { backgroundColor: '#EEF2FF' }]}>
@@ -229,7 +255,7 @@ export default function HomeScreen({ navigation }: Props) {
 
             <TouchableOpacity
               style={s.qaCard}
-              onPress={() => navigation.navigate('MainTabs')}
+              onPress={() => (navigation as any).navigate('Dashboard')}
               activeOpacity={0.75}
             >
               <View style={[s.qaIcon, { backgroundColor: '#F0FDF4' }]}>
@@ -241,7 +267,7 @@ export default function HomeScreen({ navigation }: Props) {
 
             <TouchableOpacity
               style={s.qaCard}
-              onPress={() => navigation.navigate('MainTabs')}
+              onPress={() => (navigation as any).navigate('Dashboard')}
               activeOpacity={0.75}
             >
               <View style={[s.qaIcon, { backgroundColor: '#FFFBEB' }]}>
@@ -253,7 +279,7 @@ export default function HomeScreen({ navigation }: Props) {
 
             <TouchableOpacity
               style={s.qaCard}
-              onPress={() => navigation.navigate('MainTabs')}
+              onPress={() => (navigation as any).navigate('Profile')}
               activeOpacity={0.75}
             >
               <View style={[s.qaIcon, { backgroundColor: '#FFF1F2' }]}>
@@ -276,6 +302,35 @@ const s = StyleSheet.create({
   safe:          { flex: 1, backgroundColor: '#FFFFFF' },
   scroll:        { flex: 1 },
   scrollContent: { paddingBottom: 8 },
+  centerContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  retryBtn: {
+    marginTop: 10,
+    backgroundColor: ACCENT,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryTxt: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
 
   // ── Hero ────────────────────────────────────
   hero: {
