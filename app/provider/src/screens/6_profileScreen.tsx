@@ -13,6 +13,7 @@ import { Divider } from '../components';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
 import { providerAvailabilityToggle, fetchProviderProfile, logout } from '@/src/redux/actions/appActions';
 import { EditProfileModal } from '@/src/components/profile';
+import { useRole } from '@/src/context/RoleContext';
 
 interface RowConfig {
   iconName: keyof typeof Feather.glyphMap;
@@ -103,6 +104,8 @@ export default function ProfileScreen() {
     },
   ];
 
+  const { setIsGuest } = useRole();
+
   const handleLogout = useCallback(() => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -110,11 +113,12 @@ export default function ProfileScreen() {
         text: 'Log Out',
         style: 'destructive',
         onPress: () => {
+          setIsGuest(false);
           dispatch(logout() as any);
         },
       },
     ]);
-  }, [dispatch]);
+  }, [dispatch, setIsGuest]);
 
   return (
     <SafeAreaView style={s.safe}>

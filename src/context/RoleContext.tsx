@@ -8,14 +8,35 @@
 //  state with the signed-in user's role (see the `// Later:` note in app/_layout).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type Role = 'consumer' | 'provider';
+
+export const SAVED_ROLE_KEY = '@localfix_saved_role';
+
+export async function getSavedRole(): Promise<Role | null> {
+  try {
+    const val = await AsyncStorage.getItem(SAVED_ROLE_KEY);
+    if (val === 'consumer' || val === 'provider') return val;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setSavedRole(role: Role): Promise<void> {
+  try {
+    await AsyncStorage.setItem(SAVED_ROLE_KEY, role);
+  } catch {}
+}
 
 interface RoleContextValue {
   role: Role;
   setRole: (role: Role) => void;
   toggleRole: () => void;
+  isGuest: boolean;
+  setIsGuest: (guest: boolean) => void;
 }
 
 const RoleContext = createContext<RoleContextValue | undefined>(undefined);
@@ -24,13 +45,36 @@ export const RoleProvider: React.FC<{ children: React.ReactNode; initialRole?: R
   children,
   initialRole = 'consumer',
 }) => {
-  const [role, setRole] = useState<Role>(initialRole);
-  const toggleRole = useCallback(
-    () => setRole((r) => (r === 'consumer' ? 'provider' : 'consumer')),
-    []
-  );
+  const [role, setRoleState] = useState<Role>(initialRole);
+  const [isGuest, setIsGuest] = useState<boolean>(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getSavedRole().then((saved) => {
+      if (mounted && saved) {
+        setRoleState(saved);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const setRole = useCallback((newRole: Role) => {
+    setRoleState(newRole);
+    setSavedRole(newRole);
+  }, []);
+
+  const toggleRole = useCallback(() => {
+    setRoleState((r) => {
+      const next: Role = r === 'consumer' ? 'provider' : 'consumer';
+      setSavedRole(next);
+      return next;
+    });
+  }, []);
+
   return (
-    <RoleContext.Provider value={{ role, setRole, toggleRole }}>
+    <RoleContext.Provider value={{ role, setRole, toggleRole, isGuest, setIsGuest }}>
       {children}
     </RoleContext.Provider>
   );

@@ -237,6 +237,8 @@ export interface ProfileStat {
 }
 
 export interface UserProfile {
+  id?: string;
+  role?: string;
   name: string;
   email: string;
   phone: string;

@@ -1,0 +1,139 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { type Role } from '@/src/context/RoleContext';
+import { Colors, FontSize, FontWeight, Radii } from '@/src/theme';
+
+interface RoleSwitcherProps {
+  selectedRole: Role;
+  onRoleChange: (role: Role) => void;
+}
+
+export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({
+  selectedRole,
+  onRoleChange,
+}) => {
+  const isConsumer = selectedRole === 'consumer';
+
+  return (
+    <View style={styles.container}>
+      {/* Consumer Option */}
+      <TouchableOpacity
+        style={[
+          styles.segment,
+          isConsumer && styles.segmentActiveConsumer,
+        ]}
+        onPress={() => onRoleChange('consumer')}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Select Consumer Role"
+        accessibilityState={{ selected: isConsumer }}
+      >
+        <MaterialCommunityIcons
+          name="home-heart"
+          size={18}
+          color={isConsumer ? '#FFFFFF' : '#94A3B8'}
+          style={styles.icon}
+        />
+        <View>
+          <Text style={[styles.title, isConsumer ? styles.titleActive : styles.titleInactive]}>
+            Consumer
+          </Text>
+          <Text style={[styles.subtitle, isConsumer ? styles.subActive : styles.subInactive]}>
+            Book Services
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Provider Option */}
+      <TouchableOpacity
+        style={[
+          styles.segment,
+          !isConsumer && styles.segmentActiveProvider,
+        ]}
+        onPress={() => onRoleChange('provider')}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Select Provider Role"
+        accessibilityState={{ selected: !isConsumer }}
+      >
+        <MaterialCommunityIcons
+          name="briefcase-account"
+          size={18}
+          color={!isConsumer ? '#FFFFFF' : '#94A3B8'}
+          style={styles.icon}
+        />
+        <View>
+          <Text style={[styles.title, !isConsumer ? styles.titleActive : styles.titleInactive]}>
+            Provider
+          </Text>
+          <Text style={[styles.subtitle, !isConsumer ? styles.subActive : styles.subInactive]}>
+            Grow Business
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 25, 35, 0.65)',
+    borderRadius: Radii.lg ?? 16,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    marginBottom: 20,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  segmentActiveConsumer: {
+    backgroundColor: '#2563EB',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  segmentActiveProvider: {
+    backgroundColor: '#D97706',
+    shadowColor: '#D97706',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  icon: {
+    marginRight: 8,
+  },
+  title: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+  },
+  titleActive: {
+    color: '#FFFFFF',
+  },
+  titleInactive: {
+    color: '#94A3B8',
+  },
+  subtitle: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.regular,
+  },
+  subActive: {
+    color: 'rgba(255, 255, 255, 0.82)',
+  },
+  subInactive: {
+    color: '#64748B',
+  },
+});
+
+export default RoleSwitcher;

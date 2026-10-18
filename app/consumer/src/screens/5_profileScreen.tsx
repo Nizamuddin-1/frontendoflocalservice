@@ -34,11 +34,14 @@ import {
 import type { ToggleKey } from "@/src/components/profile";
 import { MENU_SECTIONS } from "@/src/services/mock";
 import { useAppSelector, useAppDispatch } from "@/src/redux/store";
-import { fetchProfile } from "@/src/redux/actions/appActions";
+import { fetchProfile, logout } from "@/src/redux/actions/appActions";
+import { useRole } from "@/src/context/RoleContext";
+import { Alert } from "react-native";
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
   const dispatch = useAppDispatch();
+  const { setIsGuest } = useRole();
   const { user, isLoading } = useAppSelector((s) => s.consumer.profile);
   const [toggles, setToggles] = useState(DEFAULT_TOGGLES);
   const [showEdit, setShowEdit] = useState(false);
@@ -47,6 +50,20 @@ export default function ProfileScreen() {
   useEffect(() => {
     dispatch(fetchProfile());
   }, [dispatch]);
+
+  const handleLogout = () => {
+    Alert.alert("Log Out", "Are you sure you want to log out of LocalFix?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: () => {
+          setIsGuest(false);
+          dispatch(logout() as any);
+        },
+      },
+    ]);
+  };
 
   const handleToggle = (key: ToggleKey) => {
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -187,6 +204,30 @@ export default function ProfileScreen() {
               onToggle={handleToggle}
             />
           ))}
+        </View>
+
+        {/* ── Logout Button ── */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "rgba(239, 68, 68, 0.08)",
+              borderWidth: 1,
+              borderColor: "rgba(239, 68, 68, 0.25)",
+              borderRadius: 14,
+              paddingVertical: 13,
+              marginBottom: 16,
+            }}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="log-out-outline" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+            <Text style={{ color: "#EF4444", fontSize: 14, fontWeight: "600" }}>
+              Log Out
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── App Version ── */}

@@ -26,8 +26,18 @@ export interface AuthSession {
   token: string;
 }
 
+export interface RegisterParams {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  role: 'consumer' | 'provider';
+}
+
 function mapBackendUser(raw: AuthLoginResponse['user']): UserProfile {
   return {
+    id: raw.id,
+    role: raw.role,
     name: raw.name,
     email: raw.email,
     phone: raw.phone,
@@ -43,6 +53,26 @@ function mapBackendUser(raw: AuthLoginResponse['user']): UserProfile {
 }
 
 export const authApi = {
+  async register(params: RegisterParams): Promise<AuthSession> {
+    if (config.useMock) {
+      return mockDelay({
+        user: { ...USER, id: 'mock-user-id', name: params.name, email: params.email, phone: params.phone, role: params.role },
+        token: 'mock-token',
+      });
+    }
+
+    const result = await apiClient.post<AuthLoginResponse>('/auth/register', params);
+
+    // Persist tokens for subsequent requests
+    await setStoredToken(result.accessToken);
+    await setStoredRefreshToken(result.refreshToken);
+
+    return {
+      user: mapBackendUser(result.user),
+      token: result.accessToken,
+    };
+  },
+
   async login(email: string, password: string): Promise<AuthSession> {
     if (config.useMock) {
       return mockDelay({ user: { ...USER, email: email || USER.email }, token: 'mock-token' });

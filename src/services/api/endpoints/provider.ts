@@ -146,8 +146,16 @@ export const providerApi = {
     return apiClient.get('/provider/profile');
   },
 
-  async updateProfile(data: any): Promise<any> {
-    return apiClient.put('/provider/profile', data);
+  async updateProfile(data: any, token?: string): Promise<any> {
+    return apiClient.put('/provider/profile', data, { token });
+  },
+
+  async createService(data: any, token?: string): Promise<any> {
+    return apiClient.post('/provider/services', data, { token });
+  },
+
+  async createVariation(serviceId: string, data: any, token?: string): Promise<any> {
+    return apiClient.post(`/provider/services/${serviceId}/variations`, data, { token });
   },
 };
 
