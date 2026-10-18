@@ -14,6 +14,8 @@ import {
   PROVIDER_AVAILABILITY_TOGGLE,
   PROFILE_FETCH_REQUEST, PROFILE_FETCH_SUCCESS, PROFILE_FETCH_FAILURE,
   PROFILE_UPDATE_REQUEST, PROFILE_UPDATE_SUCCESS, PROFILE_UPDATE_FAILURE,
+  PROVIDER_PROFILE_FETCH_REQUEST, PROVIDER_PROFILE_FETCH_SUCCESS, PROVIDER_PROFILE_FETCH_FAILURE,
+  PROVIDER_PROFILE_UPDATE_REQUEST, PROVIDER_PROFILE_UPDATE_SUCCESS, PROVIDER_PROFILE_UPDATE_FAILURE,
 } from '../actions/actionTypes';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -294,30 +296,47 @@ export default function providerReducer(
       };
 
     // ── PROVIDER PROFILE ──────────────────────────────
+    case PROVIDER_PROFILE_FETCH_REQUEST:
     case PROFILE_FETCH_REQUEST:
       return {
         ...state,
         profile: { ...state.profile, isLoading: true, error: null },
       };
+    case PROVIDER_PROFILE_FETCH_SUCCESS:
     case PROFILE_FETCH_SUCCESS:
       return {
         ...state,
         profile: { ...state.profile, data: action.payload, isLoading: false, error: null },
       };
+    case PROVIDER_PROFILE_FETCH_FAILURE:
     case PROFILE_FETCH_FAILURE:
       return {
         ...state,
         profile: { ...state.profile, isLoading: false, error: action.payload },
       };
+    case PROVIDER_PROFILE_UPDATE_REQUEST:
     case PROFILE_UPDATE_REQUEST:
-      return { ...state };
+      return {
+        ...state,
+        profile: { ...state.profile, isLoading: true, error: null },
+      };
+    case PROVIDER_PROFILE_UPDATE_SUCCESS:
     case PROFILE_UPDATE_SUCCESS:
       return {
         ...state,
-        profile: { ...state.profile, data: action.payload },
+        profile: {
+          ...state.profile,
+          data: state.profile.data ? { ...state.profile.data, ...action.payload } : action.payload,
+          isLoading: false,
+          error: null,
+        },
       };
+    case PROVIDER_PROFILE_UPDATE_FAILURE:
     case PROFILE_UPDATE_FAILURE:
-      return { ...state };
+      return {
+        ...state,
+        profile: { ...state.profile, isLoading: false, error: action.payload },
+      };
 
     default:
       return state;

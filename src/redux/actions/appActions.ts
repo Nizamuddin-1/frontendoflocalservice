@@ -233,6 +233,69 @@ export const fetchProfile = () => async (dispatch: any, getState: any) => {
   }
 };
 
+export const updateConsumerProfile = (data: any) => async (dispatch: any, getState: any) => {
+  dispatch(profileUpdateRequest());
+  try {
+    const { auth } = getState().consumer;
+    const updated = await authApi.updateProfile(data, auth.token);
+    dispatch(profileUpdateSuccess(updated));
+    return { success: true, data: updated };
+  } catch (e: any) {
+    const message = e instanceof Error ? e.message : 'Failed to update profile';
+    dispatch(profileUpdateFailure(message));
+    return { success: false, error: message };
+  }
+};
+
+export const providerProfileUpdateRequest = () => ({
+  type: ActionTypes.PROVIDER_PROFILE_UPDATE_REQUEST,
+});
+export const providerProfileUpdateSuccess = (payload: any) => ({
+  type: ActionTypes.PROVIDER_PROFILE_UPDATE_SUCCESS,
+  payload,
+});
+export const providerProfileUpdateFailure = (error: string) => ({
+  type: ActionTypes.PROVIDER_PROFILE_UPDATE_FAILURE,
+  payload: error,
+});
+
+export const updateProviderProfile = (data: any) => async (dispatch: any) => {
+  dispatch(providerProfileUpdateRequest());
+  try {
+    const updated = await providerApi.updateProfile(data);
+    dispatch(providerProfileUpdateSuccess(updated));
+    return { success: true, data: updated };
+  } catch (e: any) {
+    const message = e instanceof Error ? e.message : 'Failed to update profile';
+    dispatch(providerProfileUpdateFailure(message));
+    return { success: false, error: message };
+  }
+};
+
+export const providerProfileFetchRequest = () => ({
+  type: ActionTypes.PROVIDER_PROFILE_FETCH_REQUEST,
+});
+export const providerProfileFetchSuccess = (payload: any) => ({
+  type: ActionTypes.PROVIDER_PROFILE_FETCH_SUCCESS,
+  payload,
+});
+export const providerProfileFetchFailure = (error: string) => ({
+  type: ActionTypes.PROVIDER_PROFILE_FETCH_FAILURE,
+  payload: error,
+});
+
+export const fetchProviderProfile = () => async (dispatch: any) => {
+  dispatch(providerProfileFetchRequest());
+  try {
+    const profile = await providerApi.getProfile();
+    dispatch(providerProfileFetchSuccess(profile));
+  } catch (e: any) {
+    dispatch(providerProfileFetchFailure(e instanceof Error ? e.message : 'Failed to load profile'));
+  }
+};
+
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  PROVIDER / OPS actions
 // ─────────────────────────────────────────────────────────────────────────────

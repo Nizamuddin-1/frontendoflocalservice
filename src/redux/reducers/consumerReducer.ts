@@ -306,14 +306,21 @@ export default function consumerReducer(
         profile: { ...state.profile, isLoading: false, error: action.payload },
       };
     case PROFILE_UPDATE_REQUEST:
-      return { ...state };
+      return {
+        ...state,
+        profile: { ...state.profile, isLoading: true, error: null },
+      };
     case PROFILE_UPDATE_SUCCESS:
       return {
         ...state,
-        profile: { ...state.profile, user: action.payload },
+        profile: { ...state.profile, user: action.payload, isLoading: false, error: null },
+        auth: state.auth.user ? { ...state.auth, user: { ...state.auth.user, ...action.payload } } : state.auth,
       };
     case PROFILE_UPDATE_FAILURE:
-      return { ...state };
+      return {
+        ...state,
+        profile: { ...state.profile, isLoading: false, error: action.payload },
+      };
 
     default:
       return state;

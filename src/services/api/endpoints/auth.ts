@@ -76,6 +76,19 @@ export const authApi = {
       await clearStoredTokens();
     }
   },
+
+  async updateProfile(
+    data: Partial<{ name: string; phone: string; email: string; location: string; avatar: string }>,
+    token?: string
+  ): Promise<UserProfile> {
+    if (config.useMock) {
+      Object.assign(USER, data);
+      return mockDelay({ ...USER });
+    }
+
+    const raw = await apiClient.put<AuthLoginResponse['user']>('/consumer/profile', data, { token });
+    return mapBackendUser(raw);
+  },
 };
 
 export default authApi;

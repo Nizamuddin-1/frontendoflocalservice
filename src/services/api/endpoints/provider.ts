@@ -135,6 +135,10 @@ export const providerApi = {
   async getProfile(): Promise<any> {
     return apiClient.get('/provider/profile');
   },
+
+  async updateProfile(data: any): Promise<any> {
+    return apiClient.put('/provider/profile', data);
+  },
 };
 
 export default providerApi;

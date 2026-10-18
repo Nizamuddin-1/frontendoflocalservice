@@ -11,7 +11,8 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { Divider } from '../components';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
-import { providerAvailabilityToggle } from '@/src/redux/actions/appActions';
+import { providerAvailabilityToggle, fetchProviderProfile } from '@/src/redux/actions/appActions';
+import { EditProfileModal } from '@/src/components/profile';
 
 interface RowConfig {
   iconName: keyof typeof Feather.glyphMap;
@@ -21,6 +22,7 @@ interface RowConfig {
   subtitle: string;
   badge?:   string;
   badgeColor?: string;
+  onPress?: () => void;
 }
 
 const ACCOUNT_ROWS: RowConfig[] = [
@@ -41,8 +43,8 @@ const SUPPORT_ROWS: RowConfig[] = [
    
 ];
 
-const RowItem: React.FC<RowConfig> = ({ iconName, iconBg, iconColor, title, subtitle, badge, badgeColor }) => (
-  <TouchableOpacity style={s.rowItem} activeOpacity={0.65}>
+const RowItem: React.FC<RowConfig> = ({ iconName, iconBg, iconColor, title, subtitle, badge, badgeColor, onPress }) => (
+  <TouchableOpacity style={s.rowItem} activeOpacity={0.65} onPress={onPress}>
     <View style={[s.rowIcon, { backgroundColor: iconBg }]}>
       <Feather name={iconName} size={17} color={iconColor} />
     </View>
@@ -63,10 +65,11 @@ export default function ProfileScreen() {
   const dispatch = useAppDispatch();
   const { data: profile, isLoading } = useAppSelector((s) => s.provider.profile);
   const { isAvailable } = useAppSelector((s) => s.provider.availability);
+  const [showEdit, setShowEdit] = useState(false);
 
   React.useEffect(() => {
     if (!profile) {
-      dispatch(require('@/src/redux/actions/appActions').fetchProfile() as any);
+      dispatch(fetchProviderProfile() as any);
     }
   }, [dispatch, profile]);
 
@@ -84,7 +87,7 @@ export default function ProfileScreen() {
       {/* ── Top Bar ─────────────────────────── */}
       <View style={s.topBar}>
         <Text style={s.topBarTitle}>My Profile</Text>
-        <TouchableOpacity style={s.editBtn}>
+        <TouchableOpacity style={s.editBtn} onPress={() => setShowEdit(true)} activeOpacity={0.7}>
           <Feather name="edit-2" size={16} color={Colors.ink2} />
         </TouchableOpacity>
       </View>
@@ -155,7 +158,10 @@ export default function ProfileScreen() {
         <View style={s.card}>
           {ACCOUNT_ROWS.map((row, i) => (
             <React.Fragment key={row.title}>
-              <RowItem {...row} />
+              <RowItem
+                {...row}
+                onPress={row.title === 'Personal Info' ? () => setShowEdit(true) : undefined}
+              />
               {i < ACCOUNT_ROWS.length - 1 && <Divider marginLeft={Spacing.lg + 38 + 12} />}
             </React.Fragment>
           ))}
@@ -184,6 +190,13 @@ export default function ProfileScreen() {
 
         <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/* ── Edit Profile Modal ──────────────── */}
+      <EditProfileModal
+        visible={showEdit}
+        onClose={() => setShowEdit(false)}
+        role="provider"
+      />
     </SafeAreaView>
   );
 }

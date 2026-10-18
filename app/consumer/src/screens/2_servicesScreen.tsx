@@ -211,7 +211,7 @@ export default function ServicesScreen() {
           </View>
         ) : (
           filtered.map((item, i) => (
-            <ServiceCard key={item._id || item.id} item={item} index={i} onBook={handleBook} />
+            <ServiceCard key={(item as any)._id || item.id} item={item} index={i} onBook={handleBook} />
           ))
         )}
         <View style={{ height: 36 }} />
