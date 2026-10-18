@@ -13,7 +13,7 @@ import { RouteProp }           from '@react-navigation/native';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { PrimaryButton, DangerButton, StatusChip } from '../components';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
-import { fetchProviderBookings } from '@/src/redux/actions/appActions';
+import { fetchProviderBookings, acceptProviderBooking, declineProviderBooking } from '@/src/redux/actions/appActions';
 import type { RootStackParamList, ServiceItem } from '../types';
 
 type NavProp    = StackNavigationProp<RootStackParamList, 'BookingDetails'>;
@@ -46,6 +46,7 @@ const ServiceRow: React.FC<{ item: ServiceItem; isLast?: boolean }> = ({ item, i
 export default function BookingDetailsScreen({ navigation, route }: Props) {
   const dispatch = useAppDispatch();
   const { list: BOOKINGS, isLoading } = useAppSelector((s) => s.provider.providerBookings);
+  const [isProcessing, setIsProcessing] = React.useState(false);
 
   useEffect(() => {
     if (BOOKINGS.length === 0) {
@@ -57,6 +58,32 @@ export default function BookingDetailsScreen({ navigation, route }: Props) {
     () => BOOKINGS.find((b) => b.id === route.params.bookingId),
     [route.params.bookingId, BOOKINGS]
   );
+
+  const handleDecline = async () => {
+    if (!booking || isProcessing) return;
+    try {
+      setIsProcessing(true);
+      await dispatch(declineProviderBooking(booking.id) as any);
+      navigation.goBack();
+    } catch {
+      navigation.goBack();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAccept = async () => {
+    if (!booking || isProcessing) return;
+    try {
+      setIsProcessing(true);
+      await dispatch(acceptProviderBooking(booking.id) as any);
+      navigation.replace('ActiveJob', { bookingId: booking.id });
+    } catch {
+      navigation.replace('ActiveJob', { bookingId: booking.id });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   if (isLoading || !booking) {
     return (
@@ -210,13 +237,15 @@ export default function BookingDetailsScreen({ navigation, route }: Props) {
         <DangerButton
           label="Decline"
           style={{ flex: 1 }}
-          onPress={() => navigation.goBack()}
+          onPress={handleDecline}
+          disabled={isProcessing}
         />
         <PrimaryButton
           label="Accept Job"
           style={{ flex: 2 }}
           icon={<Feather name="check" size={16} color="#fff" />}
-          onPress={() => navigation.replace('ActiveJob', { bookingId: booking.id })}
+          onPress={handleAccept}
+          disabled={isProcessing}
         />
       </View>
     </SafeAreaView>

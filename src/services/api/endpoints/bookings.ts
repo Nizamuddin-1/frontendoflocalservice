@@ -69,6 +69,31 @@ export const bookingsApi = {
     }
   },
 
+  async create(data: {
+    serviceId: string;
+    variationId?: string;
+    scheduledAt: string;
+    address: string;
+    city?: string;
+  }): Promise<Booking> {
+    if (config.useMock) {
+      const mockBooking: Booking = {
+        ...ALL_BOOKINGS[0],
+        id: 'b_mock_' + Date.now(),
+        address: data.address,
+        date: new Date(data.scheduledAt).toLocaleDateString('en-IN', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+        }),
+        status: 'upcoming',
+      };
+      return mockDelay(mockBooking);
+    }
+    const res = await apiClient.post<BackendBooking>('/consumer/bookings', data);
+    return mapBooking(res);
+  },
+
   async cancel(id: string): Promise<{ id: string; status: Booking['status'] }> {
     if (config.useMock) return mockDelay({ id, status: 'cancelled' });
     const data = await apiClient.put<{ _id: string; status: string }>(`/consumer/bookings/${id}/cancel`, { reason: 'Cancelled by user' });

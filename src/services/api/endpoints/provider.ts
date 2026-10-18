@@ -128,6 +128,14 @@ export const providerApi = {
     return apiClient.put(`/provider/bookings/${id}/status`, { status });
   },
 
+  async acceptBooking(id: string): Promise<any> {
+    return apiClient.put(`/provider/bookings/${id}/accept`);
+  },
+
+  async declineBooking(id: string): Promise<any> {
+    return apiClient.put(`/provider/bookings/${id}/decline`);
+  },
+
   async toggleAvailability(): Promise<{ isAvailable: boolean }> {
     return apiClient.put('/provider/availability');
   },

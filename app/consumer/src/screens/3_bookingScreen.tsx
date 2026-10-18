@@ -39,10 +39,8 @@ export default function BookingsScreen() {
   const { list: bookings, filter: activeTab, isLoading } = useAppSelector((s) => s.consumer.bookings);
 
   useEffect(() => {
-    if (bookings.length === 0) {
-      dispatch(fetchBookings());
-    }
-  }, [dispatch, bookings.length]);
+    dispatch(fetchBookings());
+  }, [dispatch]);
 
   const filtered = activeTab === "all"
     ? bookings
@@ -119,6 +117,8 @@ export default function BookingsScreen() {
           sections={sections}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <BookingCard booking={item} />}
+          refreshing={isLoading}
+          onRefresh={() => dispatch(fetchBookings())}
           renderSectionHeader={({ section: { title } }) =>
             title ? (
               <View style={styles.sectionHeader}>

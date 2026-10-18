@@ -104,6 +104,25 @@ export const cancelBooking = (id: string) => async (dispatch: any) => {
   }
 };
 
+export const createBooking = (data: {
+  serviceId: string;
+  variationId?: string;
+  scheduledAt: string;
+  address: string;
+  city?: string;
+}) => async (dispatch: any) => {
+  dispatch(bookingCreateRequest());
+  try {
+    const booking = await bookingsApi.create(data);
+    dispatch(bookingCreateSuccess(booking));
+    return { success: true, data: booking };
+  } catch (e: any) {
+    const message = e instanceof Error ? e.message : 'Failed to create booking';
+    dispatch(bookingCreateFailure(message));
+    return { success: false, error: message };
+  }
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  SERVICES actions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -387,6 +406,36 @@ export const updateProviderBookingStatus = (id: string, status: string) => async
     dispatch(providerBookingUpdateSuccess(updated));
   } catch (e) {
     dispatch(providerBookingUpdateFailure(e instanceof Error ? e.message : 'Failed to update booking'));
+  }
+};
+
+export const acceptProviderBooking = (id: string) => async (dispatch: any) => {
+  dispatch(providerBookingUpdateRequest());
+  try {
+    const updated = await providerApi.acceptBooking(id);
+    dispatch(providerBookingUpdateSuccess({ id, status: 'active', providerStatus: 'active', ...updated }));
+    dispatch(fetchProviderDashboard());
+    dispatch(fetchProviderBookings());
+    return { success: true, data: updated };
+  } catch (e: any) {
+    const message = e instanceof Error ? e.message : 'Failed to accept booking';
+    dispatch(providerBookingUpdateFailure(message));
+    return { success: false, error: message };
+  }
+};
+
+export const declineProviderBooking = (id: string) => async (dispatch: any) => {
+  dispatch(providerBookingUpdateRequest());
+  try {
+    const updated = await providerApi.declineBooking(id);
+    dispatch(providerBookingUpdateSuccess({ id, status: 'cancelled', providerStatus: 'cancelled', ...updated }));
+    dispatch(fetchProviderDashboard());
+    dispatch(fetchProviderBookings());
+    return { success: true, data: updated };
+  } catch (e: any) {
+    const message = e instanceof Error ? e.message : 'Failed to decline booking';
+    dispatch(providerBookingUpdateFailure(message));
+    return { success: false, error: message };
   }
 };
 

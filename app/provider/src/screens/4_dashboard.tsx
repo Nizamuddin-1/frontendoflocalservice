@@ -41,7 +41,11 @@ export default function DashboardScreen({ navigation }: Props) {
 
   useEffect(() => {
     dispatch(fetchProviderDashboard() as any);
-  }, [dispatch]);
+    const unsubscribe = navigation.addListener('focus', () => {
+      dispatch(fetchProviderDashboard() as any);
+    });
+    return unsubscribe;
+  }, [dispatch, navigation]);
 
   const filteredJobs = useMemo((): DashboardJob[] => {
     switch (localFilter) {
@@ -121,6 +125,8 @@ export default function DashboardScreen({ navigation }: Props) {
           data={filteredJobs}
           keyExtractor={(item) => item.id}
           renderItem={renderJob}
+          refreshing={isLoading}
+          onRefresh={() => dispatch(fetchProviderDashboard() as any)}
           contentContainerStyle={s.listContent}
           showsVerticalScrollIndicator={false}
 

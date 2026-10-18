@@ -2,7 +2,7 @@
 // Extracted from 2_servicesScreen.tsx (services feature).
 import React, { useRef, useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Modal, Dimensions,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, Animated, Modal, Dimensions, ActivityIndicator, Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -10,6 +10,8 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { C, F } from './tokens';
 import { styles } from './services.styles';
 import type { Service } from '@/src/types';
+import { useAppDispatch } from '@/src/redux/store';
+import { createBooking, fetchBookings } from '@/src/redux/actions/appActions';
 
 const { height } = Dimensions.get('window');
 
@@ -20,9 +22,46 @@ export interface BookingSheetProps {
 }
 
 export const BookingSheet: React.FC<BookingSheetProps> = ({ service, visible, onClose }) => {
+  const dispatch = useAppDispatch();
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const [selectedVar, setSelectedVar] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConfirmBooking = async () => {
+    if (!service || isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      const scheduledDate = new Date();
+      scheduledDate.setDate(scheduledDate.getDate() + 1);
+      scheduledDate.setHours(10, 0, 0, 0);
+
+      const result: any = await dispatch(
+        createBooking({
+          serviceId: service.id,
+          variationId: selectedVar || undefined,
+          scheduledAt: scheduledDate.toISOString(),
+          address: '42, Park Avenue, Indiranagar',
+          city: 'Bengaluru',
+        })
+      );
+
+      if (result?.success) {
+        dispatch(fetchBookings());
+        Alert.alert(
+          'Booking Confirmed!',
+          `Your booking for ${service.name} has been placed.`,
+          [{ text: 'OK', onPress: onClose }]
+        );
+      } else {
+        Alert.alert('Booking Failed', result?.error || 'Could not place booking. Please try again.');
+      }
+    } catch (e: any) {
+      Alert.alert('Booking Error', e?.message || 'Something went wrong.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (visible && service) {
@@ -174,12 +213,19 @@ export const BookingSheet: React.FC<BookingSheetProps> = ({ service, visible, on
             </View>
           </View>
           <TouchableOpacity
-            style={[styles.bookSheetCTA, { backgroundColor: service.accentColor }]}
+            style={[styles.bookSheetCTA, { backgroundColor: service.accentColor, opacity: isSubmitting ? 0.7 : 1 }]}
             activeOpacity={0.88}
-            onPress={onClose}
+            onPress={handleConfirmBooking}
+            disabled={isSubmitting}
           >
-            <Ionicons name="calendar-outline" size={16} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={[styles.bookSheetCTAText, { fontFamily: F.bodySemi }]}>Confirm Booking</Text>
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
+            ) : (
+              <Ionicons name="calendar-outline" size={16} color="#FFF" style={{ marginRight: 8 }} />
+            )}
+            <Text style={[styles.bookSheetCTAText, { fontFamily: F.bodySemi }]}>
+              {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
+            </Text>
           </TouchableOpacity>
         </View>
       </Animated.View>

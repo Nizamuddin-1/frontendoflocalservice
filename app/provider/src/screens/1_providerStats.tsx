@@ -11,7 +11,7 @@ import { Feather } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Colors, FontSize, FontWeight, Spacing, Radii, Shadows } from '../theme';
 import { useAppSelector, useAppDispatch } from '@/src/redux/store';
-import { fetchProviderBookings, fetchProfile } from '@/src/redux/actions/appActions';
+import { fetchProviderBookings, fetchProfile, declineProviderBooking } from '@/src/redux/actions/appActions';
 import type { RootStackParamList } from '../types';
 
 type HomeNavProp = StackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -35,6 +35,11 @@ export default function HomeScreen({ navigation }: Props) {
     dispatch(fetchProviderBookings() as any);
     dispatch(fetchProfile() as any);
 
+    const unsubscribe = navigation.addListener('focus', () => {
+      dispatch(fetchProviderBookings() as any);
+      dispatch(fetchProfile() as any);
+    });
+
     Animated.parallel([
       Animated.timing(heroFade,  { toValue: 1, duration: 320, useNativeDriver: true }),
       Animated.timing(cardFade,  { toValue: 1, duration: 400, delay: 160, useNativeDriver: true }),
@@ -48,10 +53,13 @@ export default function HomeScreen({ navigation }: Props) {
       ])
     );
     pulseAnim.start();
-    return () => pulseAnim.stop();
-  }, [dispatch]);
+    return () => {
+      pulseAnim.stop();
+      unsubscribe();
+    };
+  }, [dispatch, navigation]);
 
-  const newBooking = BOOKINGS[0] ?? {
+  const newBooking = BOOKINGS.find((b: any) => b.status === 'new' || b.status === 'upcoming') ?? BOOKINGS[0] ?? {
     id: '',
     serviceType: '',
     services: [{ quantity: 0 }],
@@ -65,6 +73,12 @@ export default function HomeScreen({ navigation }: Props) {
       navigation.push('BookingDetails', { bookingId: newBooking.id });
     }
   }, [navigation, newBooking.id]);
+
+  const handleDecline = useCallback(async () => {
+    if (newBooking.id) {
+      await dispatch(declineProviderBooking(newBooking.id) as any);
+    }
+  }, [dispatch, newBooking.id]);
 
   if (profile.isLoading || providerBookings.isLoading) {
     return (
@@ -176,7 +190,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <Text style={s.payoutAmt}>₹{(newBooking.totalAmount ?? 0).toLocaleString()}</Text>
                 </View>
                 <View style={s.footerBtns}>
-                  <TouchableOpacity style={s.declineBtn}>
+                  <TouchableOpacity style={s.declineBtn} onPress={handleDecline}>
                     <Feather name="x" size={14} color="#EF4444" />
                     <Text style={s.declineTxt}>Decline</Text>
                   </TouchableOpacity>
