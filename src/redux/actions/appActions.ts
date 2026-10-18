@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { authApi, bookingsApi, walletApi, servicesApi, providerApi, getStoredToken, clearStoredTokens } from '@/src/services/api';
+import { markLoggedOutInSession } from '@/src/services/devAutoLogin';
 import type { BookingStatus } from '@/src/types';
 import * as ActionTypes from './actionTypes';
 
@@ -39,6 +40,7 @@ export const login = (email: string, password: string) => async (dispatch: any) 
 };
 
 export const logout = () => async (dispatch: any, getState: any) => {
+  markLoggedOutInSession();
   const { auth } = getState().consumer;
   try {
     const token = auth?.token || (await getStoredToken());

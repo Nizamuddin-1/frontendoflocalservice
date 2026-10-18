@@ -88,7 +88,12 @@ export type BadgeType =
   | 'MOST BOOKED'
   | 'FLASH DEAL'
   | 'NEW LAUNCH'
-  | 'PREMIUM';
+  | 'PREMIUM'
+  | 'BEST SELLER'
+  | 'POPULAR'
+  | 'EXPRESS'
+  | 'SAFETY'
+  | (string & {});
 
 export interface ServiceVariation {
   id: string;

@@ -13,3 +13,4 @@ export * from './PromoCard';
 export * from './BookingCard';
 export * from './TrustStrip';
 export * from './BottomNavigation';
+export * from './CategoryIcon';

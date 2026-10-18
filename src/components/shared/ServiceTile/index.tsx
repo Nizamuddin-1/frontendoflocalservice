@@ -6,8 +6,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet, Dimensions } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-
+import { CategoryIcon } from '../CategoryIcon';
 import { Colors as C, Fonts as F } from '../../../theme';
 import type { ServiceCategory } from '../../../types';
 
@@ -57,7 +56,7 @@ export const ServiceTile: React.FC<ServiceTileProps> = ({ item, index }) => {
             { backgroundColor: item.bg, borderColor: item.color + '28' },
           ]}
         >
-          <Ionicons name={item.icon as any} size={23} color={item.color} />
+          <CategoryIcon name={item.icon} size={23} color={item.color} />
           <View style={[styles.serviceProBadge, { backgroundColor: item.color }]}>
             <Text style={[styles.serviceProCount, { fontFamily: F.bodyBold }]}>
               {item.proCount}

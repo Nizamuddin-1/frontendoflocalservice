@@ -22,8 +22,19 @@ export interface StatusBadgeProps {
   status: BookingStatus;
 }
 
+const DEFAULT_STATUS_CONFIG = {
+  label: "Unknown",
+  bg: "#F3F4F6",
+  text: "#4B5563",
+  icon: "ellipse-outline",
+  dot: "#9CA3AF",
+};
+
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
-  const cfg = STATUS_CONFIG[status];
+  const cfg = STATUS_CONFIG[status] || {
+    ...DEFAULT_STATUS_CONFIG,
+    label: typeof status === 'string' ? status : DEFAULT_STATUS_CONFIG.label,
+  };
   return (
     <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
       <View style={[styles.statusDot, { backgroundColor: cfg.dot }]} />
