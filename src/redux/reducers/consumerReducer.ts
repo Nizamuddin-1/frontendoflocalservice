@@ -148,10 +148,7 @@ export default function consumerReducer(
         auth: { ...state.auth, isLoading: false, error: action.payload },
       };
     case AUTH_LOGOUT:
-      return {
-        ...state,
-        auth: { ...initialState.auth },
-      };
+      return initialState;
     case AUTH_SET_ROLE:
       return {
         ...state,

@@ -12,35 +12,50 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import { useAppDispatch } from '@/src/redux/store';
 import { authLoginSuccess, authLoginFailure } from '@/src/redux/actions/appActions';
 import { authApi } from '@/src/services/api/endpoints/auth';
+import { clearStoredTokens } from '@/src/services/api/client';
+import { clearSavedRole } from '@/src/context/RoleContext';
+import { markManualLoginInSession } from '@/src/services/devAutoLogin';
 import { FontSize, FontWeight, Radii } from '@/src/theme';
 
 interface ConsumerAuthFormProps {
   mode: 'login' | 'signup';
-  onModeChange: (mode: 'login' | 'signup') => void;
+  onToggleMode?: () => void;
+  onModeChange?: (mode: 'login' | 'signup') => void;
   onSuccess: (userRole: string) => void;
   onGuestAccess: () => void;
 }
 
 export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
   mode,
+  onToggleMode,
   onModeChange,
   onSuccess,
   onGuestAccess,
 }) => {
   const dispatch = useAppDispatch();
 
-  // Form Fields
+  // Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
-  // Status
+  // Status State
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const toggleAuthMode = () => {
+    setErrorMessage(null);
+    if (onToggleMode) {
+      onToggleMode();
+    } else if (onModeChange) {
+      onModeChange(mode === 'login' ? 'signup' : 'login');
+    }
+  };
+
+  // Client-side validation matching backend rules
   const validate = (): string | null => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) return 'Email address is required.';
@@ -72,8 +87,13 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
 
     setLoading(true);
     try {
+      // Clear all existing storage and tokens before new authentication attempt
+      await clearStoredTokens();
+      await clearSavedRole();
+
       if (mode === 'login') {
         const session = await authApi.login(email.trim(), password);
+        markManualLoginInSession();
         dispatch(authLoginSuccess(session));
         onSuccess(session.user.role || 'consumer');
       } else {
@@ -84,6 +104,7 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
           password,
           role: 'consumer',
         });
+        markManualLoginInSession();
         dispatch(authLoginSuccess(session));
         onSuccess(session.user.role || 'consumer');
       }
@@ -101,7 +122,7 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
       {/* Error Banner */}
       {errorMessage ? (
         <View style={styles.errorBox}>
-          <Ionicons name="alert-circle" size={18} color="#EF4444" style={{ marginRight: 6 }} />
+          <Ionicons name="alert-circle" size={18} color="#DC2626" style={{ marginRight: 6 }} />
           <Text style={styles.errorText}>{errorMessage}</Text>
         </View>
       ) : null}
@@ -111,11 +132,11 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Full Name</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="person-outline" size={18} color="#94A3B8" style={styles.inputIcon} />
+            <Ionicons name="person-outline" size={18} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="e.g. Priya Sharma"
-              placeholderTextColor="#64748B"
+              placeholderTextColor="#94A3B8"
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -129,11 +150,11 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Email Address</Text>
         <View style={styles.inputWrapper}>
-          <Ionicons name="mail-outline" size={18} color="#94A3B8" style={styles.inputIcon} />
+          <Ionicons name="mail-outline" size={18} color="#64748B" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="you@example.com"
-            placeholderTextColor="#64748B"
+            placeholderTextColor="#94A3B8"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -148,11 +169,11 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Phone Number</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="call-outline" size={18} color="#94A3B8" style={styles.inputIcon} />
+            <Ionicons name="call-outline" size={18} color="#64748B" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="+91 98765 43210"
-              placeholderTextColor="#64748B"
+              placeholderTextColor="#94A3B8"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -173,11 +194,11 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
           )}
         </View>
         <View style={styles.inputWrapper}>
-          <Ionicons name="lock-closed-outline" size={18} color="#94A3B8" style={styles.inputIcon} />
+          <Ionicons name="lock-closed-outline" size={18} color="#64748B" style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="Min. 6 characters"
-            placeholderTextColor="#64748B"
+            placeholderTextColor="#94A3B8"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -192,7 +213,7 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
             <Ionicons
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
               size={18}
-              color="#94A3B8"
+              color="#64748B"
             />
           </TouchableOpacity>
         </View>
@@ -240,10 +261,7 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
           {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
         </Text>
         <TouchableOpacity
-          onPress={() => {
-            setErrorMessage(null);
-            onModeChange(mode === 'login' ? 'signup' : 'login');
-          }}
+          onPress={toggleAuthMode}
           activeOpacity={0.7}
         >
           <Text style={styles.toggleLink}>
@@ -265,7 +283,7 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
         onPress={onGuestAccess}
         activeOpacity={0.8}
       >
-        <Ionicons name="compass-outline" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+        <Ionicons name="compass-outline" size={18} color="#475569" style={{ marginRight: 8 }} />
         <Text style={styles.guestBtnText}>Continue as guest</Text>
       </TouchableOpacity>
     </View>
@@ -274,26 +292,32 @@ export const ConsumerAuthForm: React.FC<ConsumerAuthFormProps> = ({
 
 const styles = StyleSheet.create({
   formCard: {
-    backgroundColor: 'rgba(23, 37, 84, 0.72)',
+    backgroundColor: '#FFFFFF',
     borderRadius: Radii.xl ?? 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.25)',
+    borderColor: '#E2E8F0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderColor: '#F87171',
     padding: 10,
     borderRadius: 10,
     marginBottom: 16,
   },
   errorText: {
-    color: '#FCA5A5',
+    color: '#DC2626',
     fontSize: FontSize.base ?? 12,
     flex: 1,
+    fontWeight: FontWeight.medium,
   },
   inputGroup: {
     marginBottom: 14,
@@ -305,23 +329,23 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   label: {
-    color: '#E2E8F0',
+    color: '#1E293B',
     fontSize: FontSize.base ?? 12,
-    fontWeight: FontWeight.medium,
+    fontWeight: FontWeight.semibold,
     marginBottom: 6,
   },
   forgotPass: {
-    color: '#60A5FA',
+    color: '#2563EB',
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#E2E8F0',
     paddingHorizontal: 12,
   },
   inputIcon: {
@@ -329,7 +353,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: FontSize.md,
     paddingVertical: 11,
   },
@@ -343,13 +367,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   termsText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: FontSize.xs,
     flex: 1,
     lineHeight: 18,
   },
   termsLink: {
-    color: '#60A5FA',
+    color: '#2563EB',
     fontWeight: FontWeight.semibold,
   },
   submitBtn: {
@@ -360,9 +384,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   submitBtnDisabled: {
     opacity: 0.65,
@@ -380,11 +404,11 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   toggleText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: FontSize.base ?? 12,
   },
   toggleLink: {
-    color: '#60A5FA',
+    color: '#2563EB',
     fontSize: FontSize.base ?? 12,
     fontWeight: FontWeight.bold,
   },
@@ -396,10 +420,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#E2E8F0',
   },
   dividerText: {
-    color: '#64748B',
+    color: '#94A3B8',
     fontSize: FontSize.xs,
     marginHorizontal: 10,
     textTransform: 'uppercase',
@@ -409,16 +433,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: '#E2E8F0',
     paddingVertical: 11,
   },
   guestBtnText: {
-    color: '#E2E8F0',
+    color: '#334155',
     fontSize: FontSize.base ?? 12,
-    fontWeight: FontWeight.medium,
+    fontWeight: FontWeight.semibold,
   },
 });
 

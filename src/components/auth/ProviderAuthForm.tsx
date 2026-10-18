@@ -15,12 +15,16 @@ import { authLoginSuccess, authLoginFailure } from '@/src/redux/actions/appActio
 import { authApi } from '@/src/services/api/endpoints/auth';
 import { providerApi } from '@/src/services/api/endpoints/provider';
 import { servicesApi } from '@/src/services/api/endpoints/services';
+import { clearStoredTokens } from '@/src/services/api/client';
+import { clearSavedRole } from '@/src/context/RoleContext';
+import { markManualLoginInSession } from '@/src/services/devAutoLogin';
 import { ProviderServiceStep, ServiceData } from './ProviderServiceStep';
 import { FontSize, FontWeight, Radii } from '@/src/theme';
 
 interface ProviderAuthFormProps {
   mode: 'login' | 'signup';
-  onModeChange: (mode: 'login' | 'signup') => void;
+  onToggleMode?: () => void;
+  onModeChange?: (mode: 'login' | 'signup') => void;
   onSuccess: (userRole: string) => void;
 }
 
@@ -37,10 +41,20 @@ const AVAILABLE_LANGUAGES = ['English', 'Hindi', 'Kannada', 'Tamil', 'Telugu'];
 
 export const ProviderAuthForm: React.FC<ProviderAuthFormProps> = ({
   mode,
+  onToggleMode,
   onModeChange,
   onSuccess,
 }) => {
   const dispatch = useAppDispatch();
+
+  const toggleAuthMode = () => {
+    setErrorMessage(null);
+    if (onToggleMode) {
+      onToggleMode();
+    } else if (onModeChange) {
+      onModeChange(mode === 'login' ? 'signup' : 'login');
+    }
+  };
 
   // Wizard Step for Sign Up
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
@@ -126,7 +140,10 @@ export const ProviderAuthForm: React.FC<ProviderAuthFormProps> = ({
 
     setLoading(true);
     try {
+      await clearStoredTokens();
+      await clearSavedRole();
       const session = await authApi.login(trimmedEmail, password);
+      markManualLoginInSession();
       dispatch(authLoginSuccess(session));
       onSuccess(session.user.role || 'provider');
     } catch (err: any) {
@@ -144,6 +161,8 @@ export const ProviderAuthForm: React.FC<ProviderAuthFormProps> = ({
     setLoading(true);
 
     try {
+      await clearStoredTokens();
+      await clearSavedRole();
       // 1. Register User Account
       const session = await authApi.register({
         name: name.trim(),
@@ -220,6 +239,7 @@ export const ProviderAuthForm: React.FC<ProviderAuthFormProps> = ({
       }
 
       // 4. Save session to Redux and Route
+      markManualLoginInSession();
       dispatch(authLoginSuccess(session));
       onSuccess(session.user.role || 'provider');
     } catch (err: any) {
@@ -315,9 +335,8 @@ export const ProviderAuthForm: React.FC<ProviderAuthFormProps> = ({
             <Text style={styles.toggleText}>New provider?</Text>
             <TouchableOpacity
               onPress={() => {
-                setErrorMessage(null);
                 setCurrentStep(1);
-                onModeChange('signup');
+                toggleAuthMode();
               }}
               activeOpacity={0.7}
             >
@@ -636,8 +655,7 @@ export const ProviderAuthForm: React.FC<ProviderAuthFormProps> = ({
               <Text style={styles.toggleText}>Already registered as a provider?</Text>
               <TouchableOpacity
                 onPress={() => {
-                  setErrorMessage(null);
-                  onModeChange('login');
+                  toggleAuthMode();
                 }}
                 activeOpacity={0.7}
               >
@@ -653,26 +671,32 @@ export const ProviderAuthForm: React.FC<ProviderAuthFormProps> = ({
 
 const styles = StyleSheet.create({
   formCard: {
-    backgroundColor: 'rgba(30, 27, 46, 0.76)',
+    backgroundColor: '#FFFFFF',
     borderRadius: Radii.xl ?? 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(217, 119, 6, 0.25)',
+    borderColor: '#E2E8F0',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.4)',
+    borderColor: '#F87171',
     padding: 10,
     borderRadius: 10,
     marginBottom: 16,
   },
   errorText: {
-    color: '#FCA5A5',
+    color: '#DC2626',
     fontSize: FontSize.base ?? 12,
     flex: 1,
+    fontWeight: FontWeight.medium,
   },
   wizardIndicator: {
     flexDirection: 'row',
@@ -688,7 +712,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -699,7 +723,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
   },
   stepNum: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
   },
@@ -712,13 +736,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   stepLabelActive: {
-    color: '#F59E0B',
+    color: '#D97706',
     fontWeight: FontWeight.semibold,
   },
   stepLine: {
     flex: 1,
     height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#E2E8F0',
     marginHorizontal: 8,
     marginBottom: 16,
   },
@@ -735,23 +759,23 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   label: {
-    color: '#E2E8F0',
+    color: '#1E293B',
     fontSize: FontSize.base ?? 12,
-    fontWeight: FontWeight.medium,
+    fontWeight: FontWeight.semibold,
     marginBottom: 6,
   },
   forgotPass: {
-    color: '#F59E0B',
+    color: '#D97706',
     fontSize: FontSize.xs,
     fontWeight: FontWeight.semibold,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#E2E8F0',
     paddingHorizontal: 12,
   },
   inputIcon: {
@@ -759,20 +783,20 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: FontSize.md,
     paddingVertical: 10,
   },
   textArea: {
     minHeight: 52,
     textAlignVertical: 'top',
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#E2E8F0',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: FontSize.md,
   },
   eyeBtn: {
@@ -784,23 +808,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   catChip: {
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    backgroundColor: '#F8FAFC',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#E2E8F0',
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   catChipActive: {
-    backgroundColor: 'rgba(217, 119, 6, 0.3)',
+    backgroundColor: '#FEF3C7',
     borderColor: '#D97706',
   },
   catChipText: {
-    color: '#94A3B8',
+    color: '#475569',
     fontSize: FontSize.xs,
   },
   catChipTextActive: {
-    color: '#FBBF24',
+    color: '#B45309',
     fontWeight: FontWeight.semibold,
   },
   termsRow: {
@@ -810,7 +834,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   termsText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: FontSize.xs,
     flex: 1,
     lineHeight: 18,
@@ -823,9 +847,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: '#D97706',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
     marginTop: 4,
   },
   submitBtnDisabled: {
@@ -848,11 +872,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#F1F5F9',
     borderRadius: 12,
   },
   stepBackText: {
-    color: '#E2E8F0',
+    color: '#334155',
     fontSize: FontSize.base ?? 12,
     marginLeft: 4,
   },
@@ -871,11 +895,11 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   toggleText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: FontSize.base ?? 12,
   },
   toggleLink: {
-    color: '#F59E0B',
+    color: '#D97706',
     fontSize: FontSize.base ?? 12,
     fontWeight: FontWeight.bold,
   },

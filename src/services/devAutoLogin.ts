@@ -8,16 +8,18 @@ import { useEffect, useRef } from 'react';
 import { config } from '@/src/config/env';
 import { DEV_USERS } from '@/src/config/devAuth';
 import { authApi } from './api/endpoints/auth';
+import { getStoredToken } from './api/client';
 import { authLoginSuccess, authLoginFailure } from '@/src/redux/actions/appActions';
-import { useAppDispatch } from '@/src/redux/store';
+import { useAppDispatch, useAppSelector } from '@/src/redux/store';
 import { useRole, type Role } from '@/src/context/RoleContext';
 
 /**
- * In-memory flag tracking whether the user has explicitly logged out during
- * the current app process session. Once true, auto-login will not re-trigger
- * until a full app restart.
+ * In-memory flags tracking explicit user actions during the current app session.
+ * If user explicitly logged out or manually logged in, dev auto-login is permanently
+ * suppressed to prevent overwriting user sessions.
  */
 let hasLoggedOutInSession = false;
+let hasManualLoggedInSession = false;
 
 export function markLoggedOutInSession(): void {
   hasLoggedOutInSession = true;
@@ -32,8 +34,22 @@ export function resetLoggedOutInSession(): void {
   hasLoggedOutInSession = false;
 }
 
+export function markManualLoginInSession(): void {
+  hasManualLoggedInSession = true;
+  console.log('[DevAutoLogin] Manual login detected. Dev auto-login permanently disabled.');
+}
+
+export function isManualLoggedInSession(): boolean {
+  return hasManualLoggedInSession;
+}
+
+export function resetManualLoginInSession(): void {
+  hasManualLoggedInSession = false;
+}
+
 /**
  * Attempt to log in with pre-seeded dev test credentials for the given role.
+ * Will abort if any real user session or manual login is active.
  */
 export async function loginWithDevAccount(role: Role, dispatch: any): Promise<boolean> {
   const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
@@ -43,7 +59,19 @@ export async function loginWithDevAccount(role: Role, dispatch: any): Promise<bo
   }
 
   if (hasLoggedOutInSession) {
-    console.log('[DevAutoLogin] Skipping auto-login because user explicitly logged out in this session.');
+    console.log('[DevAutoLogin] Skipping auto-login: user explicitly logged out in this session.');
+    return false;
+  }
+
+  if (hasManualLoggedInSession) {
+    console.log('[DevAutoLogin] Skipping auto-login: manual login active in this session.');
+    return false;
+  }
+
+  // Guard against overwriting an existing saved session
+  const existingToken = await getStoredToken();
+  if (existingToken) {
+    console.log('[DevAutoLogin] Stored token detected. Skipping dev test credentials injection.');
     return false;
   }
 
@@ -54,10 +82,17 @@ export async function loginWithDevAccount(role: Role, dispatch: any): Promise<bo
   }
 
   try {
-    console.log(`[DevAutoLogin] Authenticating as ${role} (${credentials.email})...`);
+    console.log(`[DevAutoLogin] Authenticating as dev ${role} (${credentials.email})...`);
     const session = await authApi.login(credentials.email, credentials.password);
+    
+    // Double check that user hasn't logged in manually while request was in-flight
+    if (hasManualLoggedInSession || hasLoggedOutInSession) {
+      console.log('[DevAutoLogin] In-flight dev auto-login cancelled due to session state change.');
+      return false;
+    }
+
     dispatch(authLoginSuccess(session));
-    console.log(`[DevAutoLogin] ✓ Successfully logged in as ${role} (${credentials.name})`);
+    console.log(`[DevAutoLogin] ✓ Successfully logged in as dev ${role} (${credentials.name})`);
     return true;
   } catch (error: any) {
     const errorMsg = error?.message || 'Dev auto-login request failed';
@@ -69,26 +104,26 @@ export async function loginWithDevAccount(role: Role, dispatch: any): Promise<bo
 
 /**
  * Headless component that mounts inside RoleProvider to manage dev auto-login.
- * Authenticates on app launch and seamlessly re-authenticates when switching roles
- * via the dev toggle button, unless the user has explicitly logged out.
+ * Only triggers on cold launch if no user is authenticated or manually logged in.
  */
 export function DevAutoLogin(): null {
   const dispatch = useAppDispatch();
   const { role } = useRole();
-  const activeRoleRef = useRef<Role | null>(null);
+  const { isLoggedIn } = useAppSelector((s) => s.consumer.auth);
+  const initializedRef = useRef<boolean>(false);
 
   useEffect(() => {
     const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
-    if (!isDev || !config.devAutoLogin || hasLoggedOutInSession) {
+    if (!isDev || !config.devAutoLogin || hasLoggedOutInSession || hasManualLoggedInSession || isLoggedIn) {
       return;
     }
 
-    // Only authenticate if role has changed or first run
-    if (activeRoleRef.current !== role) {
-      activeRoleRef.current = role;
+    // Only attempt on initial app launch once
+    if (!initializedRef.current) {
+      initializedRef.current = true;
       loginWithDevAccount(role, dispatch);
     }
-  }, [role, dispatch]);
+  }, [role, dispatch, isLoggedIn]);
 
   return null;
 }

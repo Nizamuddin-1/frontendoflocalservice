@@ -7,6 +7,7 @@ import { DevAutoLogin } from '@/src/services/devAutoLogin';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 export default function RootLayout() {
@@ -17,16 +18,18 @@ export default function RootLayout() {
     : 'consumer';
 
   return (
-    <Provider store={store}>
-      <RoleProvider initialRole={initialRole}>
-        <DevAutoLogin />
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-          </Stack>
-          <StatusBar style="light" />
-        </ThemeProvider>
-      </RoleProvider>
-    </Provider>
+    <SafeAreaProvider>
+      <Provider store={store}>
+        <RoleProvider initialRole={initialRole}>
+          <DevAutoLogin />
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+            <StatusBar style="light" />
+          </ThemeProvider>
+        </RoleProvider>
+      </Provider>
+    </SafeAreaProvider>
   );
 }

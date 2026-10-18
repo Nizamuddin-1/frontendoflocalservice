@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Animated,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { RoleSwitcher } from '@/src/components/auth/RoleSwitcher';
@@ -17,36 +18,34 @@ import { ConsumerAuthForm } from '@/src/components/auth/ConsumerAuthForm';
 import { ProviderAuthForm } from '@/src/components/auth/ProviderAuthForm';
 import { useRole, type Role } from '@/src/context/RoleContext';
 import { clearStoredTokens } from '@/src/services/api/client';
+import { clearSavedRole } from '@/src/context/RoleContext';
 import { authLogout } from '@/src/redux/actions/appActions';
 import { useAppDispatch } from '@/src/redux/store';
 import { FontSize, FontWeight } from '@/src/theme';
+
+export type AuthMode = 'login' | 'signup';
 
 export const UnifiedAuthScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const { role, setRole, setIsGuest } = useRole();
 
-  // Active form state
+  // Active Role State
   const [selectedRole, setSelectedRole] = useState<Role>(role || 'consumer');
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+
+  // Role Mismatch Warning
   const [roleMismatchError, setRoleMismatchError] = useState<string | null>(null);
 
-  // Micro-animation fade transition
+  // Active Tab: Login vs Sign Up
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+
+  // Smooth fade transition for tab switching
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Keep selectedRole synced if parent role changes
-  useEffect(() => {
-    if (role && role !== selectedRole) {
-      setSelectedRole(role);
-    }
-  }, [role]);
-
+  // Role Change Handler
   const handleRoleChange = (newRole: Role) => {
-    if (newRole === selectedRole) return;
     setRoleMismatchError(null);
-
-    // Trigger smooth fade transition
     Animated.timing(fadeAnim, {
-      toValue: 0.25,
+      toValue: 0.1,
       duration: 120,
       useNativeDriver: true,
     }).start(() => {
@@ -54,17 +53,18 @@ export const UnifiedAuthScreen: React.FC = () => {
       setRole(newRole);
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 180,
+        duration: 160,
         useNativeDriver: true,
       }).start();
     });
   };
 
-  const handleModeChange = (mode: 'login' | 'signup') => {
+  // Auth Mode Tab Switcher
+  const handleModeChange = (mode: AuthMode) => {
     setRoleMismatchError(null);
     Animated.timing(fadeAnim, {
-      toValue: 0.3,
-      duration: 100,
+      toValue: 0.1,
+      duration: 120,
       useNativeDriver: true,
     }).start(() => {
       setAuthMode(mode);
@@ -86,8 +86,9 @@ export const UnifiedAuthScreen: React.FC = () => {
 
     // Verify account's actual role matches active toggle
     if (normalizedRole !== selectedRole) {
-      // Revert Redux session & clear saved token
+      // Revert Redux session & clear saved token and role
       await clearStoredTokens();
+      await clearSavedRole();
       dispatch(authLogout());
 
       // Display actionable mismatch error message
@@ -116,187 +117,158 @@ export const UnifiedAuthScreen: React.FC = () => {
   const isConsumer = selectedRole === 'consumer';
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardContainer}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Deep Space Background with Atmospheric Gradients */}
-      <View style={styles.deepBackground}>
-        <View
-          style={[
-            styles.radialOrb,
-            isConsumer ? styles.consumerOrb : styles.providerOrb,
-          ]}
-        />
-        <View style={styles.darkVignette} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Worker Avatars Collage Banner */}
-        <View style={styles.collageContainer}>
-          <View style={styles.avatarsRow}>
-            <View style={[styles.avatarBadge, { backgroundColor: '#1E3A8A' }]}>
-              <MaterialCommunityIcons name="lightning-bolt" size={16} color="#60A5FA" />
-              <Text style={styles.avatarLabel}>Electrician</Text>
-            </View>
-            <View style={[styles.avatarBadge, { backgroundColor: '#064E3B' }]}>
-              <MaterialCommunityIcons name="pipe-wrench" size={16} color="#34D399" />
-              <Text style={styles.avatarLabel}>Plumber</Text>
-            </View>
-            <View style={[styles.avatarBadge, { backgroundColor: '#701A75' }]}>
-              <MaterialCommunityIcons name="broom" size={16} color="#F472B6" />
-              <Text style={styles.avatarLabel}>Cleaner</Text>
-            </View>
-            <View style={[styles.avatarBadge, { backgroundColor: '#78350F' }]}>
-              <MaterialCommunityIcons name="air-conditioner" size={16} color="#FBBF24" />
-              <Text style={styles.avatarLabel}>AC Tech</Text>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Worker Avatars Collage Banner - Light Decorative Accents */}
+          <View style={styles.collageContainer}>
+            <View style={styles.avatarsRow}>
+              <View style={[styles.avatarBadge, { backgroundColor: '#EFF6FF', borderColor: '#DBEAFE' }]}>
+                <MaterialCommunityIcons name="lightning-bolt" size={16} color="#2563EB" />
+                <Text style={[styles.avatarLabel, { color: '#1E40AF' }]}>Electrician</Text>
+              </View>
+              <View style={[styles.avatarBadge, { backgroundColor: '#ECFDF5', borderColor: '#D1FAE5' }]}>
+                <MaterialCommunityIcons name="pipe-wrench" size={16} color="#059669" />
+                <Text style={[styles.avatarLabel, { color: '#065F46' }]}>Plumber</Text>
+              </View>
+              <View style={[styles.avatarBadge, { backgroundColor: '#FDF2F8', borderColor: '#FCE7F3' }]}>
+                <MaterialCommunityIcons name="broom" size={16} color="#DB2777" />
+                <Text style={[styles.avatarLabel, { color: '#9D174D' }]}>Cleaner</Text>
+              </View>
+              <View style={[styles.avatarBadge, { backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' }]}>
+                <MaterialCommunityIcons name="air-conditioner" size={16} color="#D97706" />
+                <Text style={[styles.avatarLabel, { color: '#92400E' }]}>AC Tech</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Branding Header */}
-        <View style={styles.brandHeader}>
-          <View style={styles.logoRow}>
-            <View
-              style={[
-                styles.logoWrap,
-                { backgroundColor: isConsumer ? '#2563EB' : '#D97706' },
-              ]}
+          {/* Branding Header */}
+          <View style={styles.brandHeader}>
+            <View style={styles.logoRow}>
+              <View
+                style={[
+                  styles.logoWrap,
+                  { backgroundColor: isConsumer ? '#2563EB' : '#D97706' },
+                ]}
+              >
+                <MaterialCommunityIcons name="wrench-clock" size={26} color="#FFFFFF" />
+              </View>
+              <Text style={styles.appName}>
+                Local<Text style={{ color: isConsumer ? '#2563EB' : '#D97706' }}>Fix</Text>
+              </Text>
+            </View>
+            <Text style={styles.tagline}>Trusted local services, at your doorstep</Text>
+
+            {/* Dynamic Context Headline */}
+            <View style={styles.contextHeader}>
+              <Text style={styles.contextHeadline}>
+                {isConsumer ? 'Book services near you' : 'Grow your service business'}
+              </Text>
+              <Text style={styles.contextSub}>
+                {isConsumer
+                  ? 'Connect with verified top-rated professionals in minutes'
+                  : 'Receive real-time job requests and manage your earnings'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Role Selector */}
+          <RoleSwitcher selectedRole={selectedRole} onRoleChange={handleRoleChange} />
+
+          {/* Role Mismatch Error Banner */}
+          {roleMismatchError ? (
+            <View style={styles.mismatchAlert}>
+              <Ionicons name="warning" size={20} color="#D97706" style={{ marginRight: 8 }} />
+              <Text style={styles.mismatchText}>{roleMismatchError}</Text>
+            </View>
+          ) : null}
+
+          {/* Mode Selector Tabs (Login vs Sign Up) */}
+          <View style={styles.modeTabBar}>
+            <TouchableOpacity
+              style={[styles.modeTab, authMode === 'login' && styles.modeTabActive]}
+              onPress={() => handleModeChange('login')}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="wrench-clock" size={26} color="#FFFFFF" />
-            </View>
-            <Text style={styles.appName}>
-              Local<Text style={{ color: isConsumer ? '#60A5FA' : '#F59E0B' }}>Fix</Text>
-            </Text>
-          </View>
-          <Text style={styles.tagline}>Trusted local services, at your doorstep</Text>
-
-          {/* Dynamic Context Headline */}
-          <View style={styles.contextHeader}>
-            <Text style={styles.contextHeadline}>
-              {isConsumer ? 'Book services near you' : 'Grow your service business'}
-            </Text>
-            <Text style={styles.contextSub}>
-              {isConsumer
-                ? 'Connect with verified top-rated professionals in minutes'
-                : 'Receive real-time job requests and manage your earnings'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Role Selector */}
-        <RoleSwitcher selectedRole={selectedRole} onRoleChange={handleRoleChange} />
-
-        {/* Role Mismatch Error Banner */}
-        {roleMismatchError ? (
-          <View style={styles.mismatchAlert}>
-            <Ionicons name="warning" size={20} color="#F59E0B" style={{ marginRight: 8 }} />
-            <Text style={styles.mismatchText}>{roleMismatchError}</Text>
-          </View>
-        ) : null}
-
-        {/* Mode Selector Tabs (Login vs Sign Up) */}
-        <View style={styles.modeTabBar}>
-          <TouchableOpacity
-            style={[styles.modeTab, authMode === 'login' && styles.modeTabActive]}
-            onPress={() => handleModeChange('login')}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                styles.modeTabText,
-                authMode === 'login' && (isConsumer ? styles.modeTextConsumer : styles.modeTextProvider),
-              ]}
+              <Text
+                style={[
+                  styles.modeTabText,
+                  authMode === 'login' && (isConsumer ? styles.modeTextConsumer : styles.modeTextProvider),
+                ]}
+              >
+                Log In
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeTab, authMode === 'signup' && styles.modeTabActive]}
+              onPress={() => handleModeChange('signup')}
+              activeOpacity={0.8}
             >
-              Log In
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeTab, authMode === 'signup' && styles.modeTabActive]}
-            onPress={() => handleModeChange('signup')}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                styles.modeTabText,
-                authMode === 'signup' && (isConsumer ? styles.modeTextConsumer : styles.modeTextProvider),
-              ]}
-            >
-              Sign Up
-            </Text>
-          </TouchableOpacity>
-        </View>
+              <Text
+                style={[
+                  styles.modeTabText,
+                  authMode === 'signup' && (isConsumer ? styles.modeTextConsumer : styles.modeTextProvider),
+                ]}
+              >
+                Create Account
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Animated Form Body */}
-        <Animated.View style={{ opacity: fadeAnim }}>
-          {isConsumer ? (
-            <ConsumerAuthForm
-              mode={authMode}
-              onModeChange={handleModeChange}
-              onSuccess={handleAuthSuccess}
-              onGuestAccess={handleGuestAccess}
-            />
-          ) : (
-            <ProviderAuthForm
-              mode={authMode}
-              onModeChange={handleModeChange}
-              onSuccess={handleAuthSuccess}
-            />
-          )}
-        </Animated.View>
+          {/* Animated Active Form Container */}
+          <Animated.View style={{ opacity: fadeAnim }}>
+            {isConsumer ? (
+              <ConsumerAuthForm
+                mode={authMode}
+                onSuccess={handleAuthSuccess}
+                onToggleMode={() => handleModeChange(authMode === 'login' ? 'signup' : 'login')}
+                onGuestAccess={handleGuestAccess}
+              />
+            ) : (
+              <ProviderAuthForm
+                mode={authMode}
+                onSuccess={handleAuthSuccess}
+                onToggleMode={() => handleModeChange(authMode === 'login' ? 'signup' : 'login')}
+              />
+            )}
+          </Animated.View>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   keyboardContainer: {
     flex: 1,
-    backgroundColor: '#0A0F1D',
+    backgroundColor: '#FFFFFF',
   },
-  deepBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#090D16',
-  },
-  radialOrb: {
-    position: 'absolute',
-    top: -120,
-    alignSelf: 'center',
-    width: 380,
-    height: 380,
-    borderRadius: 190,
-    opacity: 0.35,
-  },
-  consumerOrb: {
-    backgroundColor: '#1D4ED8',
-  },
-  providerOrb: {
-    backgroundColor: '#B45309',
-  },
-  darkVignette: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(9, 13, 22, 0.72)',
+  scrollView: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
+    flexGrow: 1,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 56 : 42,
-    paddingBottom: 30,
+    paddingTop: 16,
+    paddingBottom: 36,
   },
   collageContainer: {
     marginBottom: 16,
@@ -315,10 +287,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   avatarLabel: {
-    color: '#E2E8F0',
     fontSize: FontSize.xs,
     fontWeight: FontWeight.medium,
     marginLeft: 5,
@@ -339,30 +309,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   appName: {
     fontSize: 28,
     fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
+    color: '#0F172A',
     letterSpacing: -0.5,
   },
   tagline: {
     fontSize: FontSize.xs,
-    color: '#94A3B8',
+    color: '#64748B',
     letterSpacing: 0.2,
   },
   contextHeader: {
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 10,
   },
   contextHeadline: {
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
-    color: '#F8FAFC',
+    color: '#0F172A',
     textAlign: 'center',
   },
   contextSub: {
@@ -375,48 +345,54 @@ const styles = StyleSheet.create({
   mismatchAlert: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    backgroundColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.45)',
+    borderColor: '#F59E0B',
     padding: 12,
     borderRadius: 12,
     marginBottom: 16,
   },
   mismatchText: {
-    color: '#FDE68A',
+    color: '#92400E',
     fontSize: FontSize.base,
     flex: 1,
     lineHeight: 18,
+    fontWeight: FontWeight.medium,
   },
   modeTabBar: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: '#F1F5F9',
     borderRadius: 12,
-    padding: 3,
+    padding: 4,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#E2E8F0',
   },
   modeTab: {
     flex: 1,
     paddingVertical: 9,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 8,
   },
   modeTabActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
   },
   modeTabText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: FontSize.base,
     fontWeight: FontWeight.medium,
   },
   modeTextConsumer: {
-    color: '#60A5FA',
+    color: '#2563EB',
     fontWeight: FontWeight.bold,
   },
   modeTextProvider: {
-    color: '#F59E0B',
+    color: '#D97706',
     fontWeight: FontWeight.bold,
   },
 });

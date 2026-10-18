@@ -150,12 +150,48 @@ export const providerApi = {
     return apiClient.put('/provider/profile', data, { token });
   },
 
+  async getServices(token?: string): Promise<any[]> {
+    const data = await apiClient.get<any[]>('/provider/services', { token });
+    if (!Array.isArray(data)) return [];
+
+    // Populate variations for each provider service via existing service detail endpoint
+    const enriched = await Promise.all(
+      data.map(async (svc) => {
+        const id = svc._id || svc.id;
+        if (!id) return svc;
+        try {
+          const detail = await apiClient.get<any>(`/consumer/services/${id}`, { token });
+          return { ...svc, variations: detail?.variations || [] };
+        } catch {
+          return { ...svc, variations: svc.variations || [] };
+        }
+      })
+    );
+    return enriched;
+  },
+
   async createService(data: any, token?: string): Promise<any> {
     return apiClient.post('/provider/services', data, { token });
   },
 
+  async updateService(serviceId: string, data: any, token?: string): Promise<any> {
+    return apiClient.put(`/provider/services/${serviceId}`, data, { token });
+  },
+
+  async deactivateService(serviceId: string, token?: string): Promise<any> {
+    return apiClient.delete(`/provider/services/${serviceId}`, { token });
+  },
+
   async createVariation(serviceId: string, data: any, token?: string): Promise<any> {
     return apiClient.post(`/provider/services/${serviceId}/variations`, data, { token });
+  },
+
+  async updateVariation(variationId: string, data: any, token?: string): Promise<any> {
+    return apiClient.put(`/provider/services/variations/${variationId}`, data, { token });
+  },
+
+  async deleteVariation(variationId: string, token?: string): Promise<any> {
+    return apiClient.delete(`/provider/services/variations/${variationId}`, { token });
   },
 };
 

@@ -20,6 +20,7 @@ import { useAppSelector, useAppDispatch } from "@/src/redux/store";
 import { authLoginSuccess } from "@/src/redux/actions/appActions";
 import { authApi } from "@/src/services/api/endpoints/auth";
 import { getStoredToken, clearStoredTokens } from "@/src/services/api/client";
+import { isManualLoggedInSession, isLoggedOutInSession } from "@/src/services/devAutoLogin";
 
 import UnifiedAuthScreen from "@/src/screens/auth/UnifiedAuthScreen";
 import HomeScreen from "../consumer/src/screens/1_statsLanding";
@@ -47,10 +48,10 @@ export default function Root() {
           setRole(savedRole);
         }
 
-        if (storedToken && !isLoggedIn) {
+        if (storedToken && !isLoggedIn && !isManualLoggedInSession() && !isLoggedOutInSession()) {
           try {
             const profile = await authApi.me(storedToken);
-            if (mounted && profile) {
+            if (mounted && profile && !isManualLoggedInSession() && !isLoggedOutInSession()) {
               dispatch(authLoginSuccess({ user: profile, token: storedToken }));
             }
           } catch {

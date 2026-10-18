@@ -5,6 +5,7 @@
 
 import { authApi, bookingsApi, walletApi, servicesApi, providerApi, getStoredToken, clearStoredTokens } from '@/src/services/api';
 import { markLoggedOutInSession } from '@/src/services/devAutoLogin';
+import { clearSavedRole } from '@/src/context/RoleContext';
 import type { BookingStatus } from '@/src/types';
 import * as ActionTypes from './actionTypes';
 
@@ -47,6 +48,7 @@ export const logout = () => async (dispatch: any, getState: any) => {
     if (token) await authApi.logout(token);
   } finally {
     await clearStoredTokens();
+    await clearSavedRole();
     dispatch(authLogout());
   }
 };

@@ -79,11 +79,11 @@ export const RoleSwitcher: React.FC<RoleSwitcherProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(15, 25, 35, 0.65)',
+    backgroundColor: '#F1F5F9',
     borderRadius: Radii.lg ?? 16,
     padding: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#E2E8F0',
     marginBottom: 20,
   },
   segment: {
@@ -99,17 +99,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563EB',
     shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   segmentActiveProvider: {
     backgroundColor: '#D97706',
     shadowColor: '#D97706',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   icon: {
     marginRight: 8,
@@ -122,14 +122,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   titleInactive: {
-    color: '#94A3B8',
+    color: '#334155',
   },
   subtitle: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.regular,
   },
   subActive: {
-    color: 'rgba(255, 255, 255, 0.82)',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   subInactive: {
     color: '#64748B',

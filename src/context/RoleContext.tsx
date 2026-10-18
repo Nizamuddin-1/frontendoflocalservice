@@ -31,6 +31,12 @@ export async function setSavedRole(role: Role): Promise<void> {
   } catch {}
 }
 
+export async function clearSavedRole(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(SAVED_ROLE_KEY);
+  } catch {}
+}
+
 interface RoleContextValue {
   role: Role;
   setRole: (role: Role) => void;
