@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -12,11 +12,11 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { servicesApi } from '@/src/services/api/endpoints/services';
 import { providerApi } from '@/src/services/api/endpoints/provider';
-import { VariationRowEditor, InlineVariationRow } from './VariationRowEditor';
+import { InlineVariationRow } from './VariationRowEditor';
 import { Colors, FontSize, FontWeight, Radii } from '@/src/theme';
 
 interface Props {
@@ -26,32 +26,267 @@ interface Props {
 }
 
 const COMMON_ICONS = [
-  { icon: 'tool', label: 'General' },
-  { icon: 'zap', label: 'Electrical' },
-  { icon: 'droplet', label: 'Plumbing' },
-  { icon: 'wind', label: 'AC / HVAC' },
-  { icon: 'check-circle', label: 'Cleaning' },
-  { icon: 'box', label: 'Carpentry' },
+  { icon: 'construct-outline', label: 'General', mc: 'tools' },
+  { icon: 'flash-outline', label: 'Electrical', mc: 'lightning-bolt' },
+  { icon: 'water-outline', label: 'Plumbing', mc: 'pipe-wrench' },
+  { icon: 'snow-outline', label: 'AC / HVAC', mc: 'air-conditioner' },
+  { icon: 'sparkles-outline', label: 'Cleaning', mc: 'spray-bottle' },
+  { icon: 'hammer-outline', label: 'Carpentry', mc: 'hammer' },
 ];
+
+interface OptionItem {
+  id: string;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  meta?: string;
+  data?: any;
+}
+
+interface OptionPickerModalProps {
+  visible: boolean;
+  title: string;
+  subtitle?: string;
+  options: OptionItem[];
+  selectedId: string | null;
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+  onSelect: (item: OptionItem) => void;
+  onClose: () => void;
+}
+
+/**
+ * Reusable modal picker for predefined Catalog Services & Variations
+ */
+const OptionPickerModal: React.FC<OptionPickerModalProps> = ({
+  visible,
+  title,
+  subtitle,
+  options,
+  selectedId,
+  loading = false,
+  error = null,
+  onRetry,
+  onSelect,
+  onClose,
+}) => {
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (!visible) setSearch('');
+  }, [visible]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase();
+    return options.filter(
+      (o) =>
+        o.title.toLowerCase().includes(q) ||
+        (o.subtitle && o.subtitle.toLowerCase().includes(q))
+    );
+  }, [options, search]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={s.pickerOverlay}>
+        <TouchableOpacity
+          style={s.pickerBackdrop}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+        <SafeAreaView edges={['bottom']} style={s.pickerSheetContainer}>
+          {/* Header */}
+          <View style={s.pickerHeader}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={s.pickerHeaderTitle}>{title}</Text>
+              {subtitle ? (
+                <Text style={s.pickerHeaderSub}>{subtitle}</Text>
+              ) : null}
+            </View>
+            <TouchableOpacity
+              style={s.pickerCloseBtn}
+              onPress={onClose}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={20} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Search Bar if > 3 options */}
+          {options.length > 3 ? (
+            <View style={s.pickerSearchWrap}>
+              <Ionicons
+                name="search-outline"
+                size={16}
+                color="#94A3B8"
+                style={{ marginRight: 8 }}
+              />
+              <TextInput
+                style={s.pickerSearchInput}
+                placeholder="Filter options..."
+                placeholderTextColor="#94A3B8"
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                clearButtonMode="while-editing"
+              />
+            </View>
+          ) : null}
+
+          {/* Body Content */}
+          <View style={s.pickerBody}>
+            {loading ? (
+              <View style={s.pickerLoadingWrap}>
+                <ActivityIndicator size="large" color="#6366F1" />
+                <Text style={s.pickerLoadingTxt}>Loading available options...</Text>
+              </View>
+            ) : error ? (
+              <View style={s.pickerErrorWrap}>
+                <Ionicons name="alert-circle-outline" size={36} color="#DC2626" />
+                <Text style={s.pickerErrorTitle}>Failed to load options</Text>
+                <Text style={s.pickerErrorSub}>{error}</Text>
+                {onRetry ? (
+                  <TouchableOpacity
+                    style={s.pickerRetryBtn}
+                    onPress={onRetry}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="refresh-outline"
+                      size={15}
+                      color="#FFFFFF"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={s.pickerRetryTxt}>Try Again</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : filtered.length === 0 ? (
+              <View style={s.pickerEmptyWrap}>
+                <Ionicons name="file-tray-outline" size={36} color="#94A3B8" />
+                <Text style={s.pickerEmptyTitle}>No options found</Text>
+                <Text style={s.pickerEmptySub}>
+                  {search.trim()
+                    ? 'No options match your search query.'
+                    : 'No predefined offerings found for this selection.'}
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                style={s.pickerScroll}
+                contentContainerStyle={s.pickerScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {filtered.map((item) => {
+                  const isSelected = selectedId === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        s.pickerItemCard,
+                        isSelected && s.pickerItemCardActive,
+                      ]}
+                      onPress={() => {
+                        onSelect(item);
+                        onClose();
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <View style={s.pickerItemTopRow}>
+                          <Text
+                            style={[
+                              s.pickerItemTitle,
+                              isSelected && s.pickerItemTitleActive,
+                            ]}
+                          >
+                            {item.title}
+                          </Text>
+                          {item.badge ? (
+                            <View style={s.pickerBadge}>
+                              <Text style={s.pickerBadgeTxt}>{item.badge}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        {item.subtitle ? (
+                          <Text style={s.pickerItemSubtitle} numberOfLines={2}>
+                            {item.subtitle}
+                          </Text>
+                        ) : null}
+                        {item.meta ? (
+                          <View style={s.pickerMetaRow}>
+                            <Ionicons
+                              name="time-outline"
+                              size={12}
+                              color="#6366F1"
+                              style={{ marginRight: 4 }}
+                            />
+                            <Text style={s.pickerMetaTxt}>{item.meta}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Ionicons
+                        name={
+                          isSelected
+                            ? 'checkmark-circle'
+                            : 'radio-button-off-outline'
+                        }
+                        size={22}
+                        color={isSelected ? '#6366F1' : '#CBD5E1'}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </SafeAreaView>
+      </View>
+    </Modal>
+  );
+};
 
 export const ServiceFormModal: React.FC<Props> = ({
   visible,
   onClose,
   onSuccess,
 }) => {
+  // Categories from backend
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+
+  // Predefined catalog state
+  const [catalogServices, setCatalogServices] = useState<any[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  // Form selections & fields
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [selectedVariationLabel, setSelectedVariationLabel] = useState<string | null>(null);
   const [shortDesc, setShortDesc] = useState('');
   const [price, setPrice] = useState('');
   const [eta, setEta] = useState('45 mins');
-  const [selectedIcon, setSelectedIcon] = useState('tool');
+  const [selectedIcon, setSelectedIcon] = useState('tools');
   const [variations, setVariations] = useState<InlineVariationRow[]>([]);
 
+  // Picker modal state
+  const [servicePickerVisible, setServicePickerVisible] = useState(false);
+  const [variationPickerVisible, setVariationPickerVisible] = useState(false);
+
+  // Request & error state
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Load backend categories
+  // 1. Load backend categories on modal open
   useEffect(() => {
     let mounted = true;
     servicesApi
@@ -74,19 +309,138 @@ export const ServiceFormModal: React.FC<Props> = ({
     };
   }, [visible]);
 
+  // 2. Load catalog items whenever selected category changes
+  const loadCatalog = useCallback(async (catId: string) => {
+    if (!catId) return;
+    setLoadingCatalog(true);
+    setCatalogError(null);
+    try {
+      const items = await providerApi.getCatalog(catId);
+      setCatalogServices(items);
+    } catch (err: any) {
+      setCatalogError('Could not load predefined catalog services. Please retry.');
+    } finally {
+      setLoadingCatalog(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedCategory && visible) {
+      loadCatalog(selectedCategory);
+    }
+  }, [selectedCategory, visible, loadCatalog]);
+
+  // Handle category change: reset service and variation
+  const handleSelectCategory = (catId: string) => {
+    if (catId === selectedCategory) return;
+    setSelectedCategory(catId);
+    setSelectedServiceId(null);
+    setName('');
+    setSelectedVariationLabel(null);
+    setVariations([]);
+  };
+
+  // Currently selected service object
+  const selectedServiceObj = useMemo(() => {
+    if (!selectedServiceId) return null;
+    return catalogServices.find((s) => s._id === selectedServiceId || s.name === name) || null;
+  }, [catalogServices, selectedServiceId, name]);
+
+  // Options for Service Name dropdown
+  const serviceOptions: OptionItem[] = useMemo(() => {
+    return catalogServices.map((svc) => ({
+      id: svc._id,
+      title: svc.name,
+      subtitle: svc.description,
+      badge: `From ₹${svc.defaultPrice}`,
+      meta: svc.defaultEta,
+      data: svc,
+    }));
+  }, [catalogServices]);
+
+  // Options for Variation dropdown (belongs to chosen service)
+  const variationOptions: OptionItem[] = useMemo(() => {
+    if (!selectedServiceObj || !Array.isArray(selectedServiceObj.variations)) return [];
+    return selectedServiceObj.variations.map((v: any, index: number) => ({
+      id: `${index}-${v.label}`,
+      title: v.label,
+      subtitle: v.desc,
+      badge: `₹${v.defaultPrice || selectedServiceObj.defaultPrice}`,
+      meta: v.duration || '45 mins',
+      data: v,
+    }));
+  }, [selectedServiceObj]);
+
+  // When user picks a Service Name
+  const handleSelectService = (option: OptionItem) => {
+    const svc = option.data;
+    setSelectedServiceId(svc._id);
+    setName(svc.name);
+
+    // Dependent Variation dropdown resets when Service Name changes
+    setSelectedVariationLabel(null);
+    setVariations([]);
+
+    // Pre-fill optional defaults
+    if (svc.description && !shortDesc.trim()) {
+      setShortDesc(svc.description);
+    }
+    if (svc.defaultPrice && !price.trim()) {
+      setPrice(String(svc.defaultPrice));
+    }
+    if (svc.defaultEta) {
+      setEta(svc.defaultEta);
+    }
+    if (svc.mcIcon) {
+      setSelectedIcon(svc.mcIcon);
+    }
+  };
+
+  // When user picks a Variation
+  const handleSelectVariation = (option: OptionItem) => {
+    const v = option.data;
+    setSelectedVariationLabel(v.label);
+
+    const vPrice = v.defaultPrice ? String(v.defaultPrice) : price || '299';
+    const vDuration = v.duration || eta || '45 mins';
+    const vDesc = v.desc || shortDesc || 'Standard package';
+
+    // Populate variation row
+    setVariations([
+      {
+        id: '1',
+        label: v.label,
+        desc: vDesc,
+        price: vPrice,
+        duration: vDuration,
+      },
+    ]);
+
+    // Pre-fill base price if empty
+    if (!price.trim()) {
+      setPrice(vPrice);
+    }
+    if (v.duration) {
+      setEta(vDuration);
+    }
+  };
+
   // Check if form is dirty
   const isDirty =
     Boolean(name.trim()) ||
     Boolean(shortDesc.trim()) ||
     Boolean(price.trim()) ||
+    Boolean(selectedVariationLabel) ||
     variations.length > 0;
 
   const resetForm = () => {
+    setSelectedServiceId(null);
     setName('');
+    setSelectedVariationLabel(null);
     setShortDesc('');
     setPrice('');
     setEta('45 mins');
-    setSelectedIcon('tool');
+    setSelectedIcon('tools');
     setVariations([]);
     setErrorMsg(null);
   };
@@ -115,9 +469,9 @@ export const ServiceFormModal: React.FC<Props> = ({
   };
 
   const validate = (): string | null => {
-    if (!name.trim()) return 'Service title is required.';
-    if (name.trim().length > 200) return 'Service title cannot exceed 200 characters.';
     if (!selectedCategory) return 'Please select a service category.';
+    if (!name.trim()) return 'Please select a predefined Service Name.';
+    if (!selectedVariationLabel) return 'Please select a Variation tier for this service.';
     if (!shortDesc.trim()) return 'Service description is required.';
     if (shortDesc.trim().length > 500) return 'Description cannot exceed 500 characters.';
     const numPrice = Number(price);
@@ -210,20 +564,20 @@ export const ServiceFormModal: React.FC<Props> = ({
             <View style={s.sheetHeader}>
               <View>
                 <Text style={s.headerTitle}>Add New Service</Text>
-                <Text style={s.headerSub}>Publish a service offering for consumers</Text>
+                <Text style={s.headerSub}>Publish a standardized service offering</Text>
               </View>
               <TouchableOpacity
                 style={s.closeBtn}
                 onPress={handleAttemptClose}
                 activeOpacity={0.7}
               >
-                <Feather name="x" size={20} color="#64748B" />
+                <Ionicons name="close" size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
 
             {errorMsg ? (
               <View style={s.errorBanner}>
-                <Feather name="alert-circle" size={16} color="#DC2626" />
+                <Ionicons name="alert-circle" size={16} color="#DC2626" />
                 <Text style={s.errorText}>{errorMsg}</Text>
               </View>
             ) : null}
@@ -234,19 +588,6 @@ export const ServiceFormModal: React.FC<Props> = ({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* Service Title */}
-              <View style={s.fieldGroup}>
-                <Text style={s.label}>Service Name *</Text>
-                <TextInput
-                  style={s.input}
-                  placeholder="e.g. Master Electrician Inspection"
-                  placeholderTextColor="#94A3B8"
-                  value={name}
-                  onChangeText={setName}
-                  editable={!saving}
-                />
-              </View>
-
               {/* Category Picker */}
               <View style={s.fieldGroup}>
                 <Text style={s.label}>Category *</Text>
@@ -261,7 +602,7 @@ export const ServiceFormModal: React.FC<Props> = ({
                       <TouchableOpacity
                         key={cat.id}
                         style={[s.categoryChip, isSelected && s.categoryChipActive]}
-                        onPress={() => setSelectedCategory(cat.id)}
+                        onPress={() => handleSelectCategory(cat.id)}
                         activeOpacity={0.75}
                       >
                         <Text
@@ -278,13 +619,123 @@ export const ServiceFormModal: React.FC<Props> = ({
                 </ScrollView>
               </View>
 
-              {/* Price & ETA */}
+              {/* Service Name Dropdown */}
+              <View style={s.fieldGroup}>
+                <View style={s.fieldHeaderRow}>
+                  <Text style={s.label}>Service Name *</Text>
+                  {catalogServices.length > 0 ? (
+                    <Text style={s.fieldCounter}>
+                      {catalogServices.length} options available
+                    </Text>
+                  ) : null}
+                </View>
+
+                {catalogError ? (
+                  <View style={s.fieldInlineError}>
+                    <Text style={s.fieldInlineErrorTxt}>{catalogError}</Text>
+                    <TouchableOpacity
+                      style={s.fieldRetryBtn}
+                      onPress={() => loadCatalog(selectedCategory)}
+                    >
+                      <Ionicons name="refresh" size={12} color="#FFFFFF" />
+                      <Text style={s.fieldRetryTxt}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      s.dropdownTrigger,
+                      Boolean(name) && s.dropdownTriggerSelected,
+                      loadingCatalog && s.dropdownTriggerLoading,
+                    ]}
+                    onPress={() => setServicePickerVisible(true)}
+                    activeOpacity={0.8}
+                    disabled={loadingCatalog || saving}
+                  >
+                    <View style={s.dropdownLeft}>
+                      <Ionicons
+                        name="briefcase-outline"
+                        size={17}
+                        color={name ? '#4F46E5' : '#94A3B8'}
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text
+                        style={[
+                          s.dropdownText,
+                          Boolean(name) && s.dropdownTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {loadingCatalog
+                          ? 'Loading catalog services...'
+                          : name || 'Select predefined service offering...'}
+                      </Text>
+                    </View>
+                    {loadingCatalog ? (
+                      <ActivityIndicator size="small" color="#6366F1" />
+                    ) : (
+                      <Ionicons name="chevron-down" size={17} color="#64748B" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Dependent Variation Dropdown */}
+              <View style={s.fieldGroup}>
+                <View style={s.fieldHeaderRow}>
+                  <Text style={s.label}>Variation Tier *</Text>
+                  {selectedServiceId && variationOptions.length > 0 ? (
+                    <Text style={s.fieldCounter}>
+                      {variationOptions.length} tiers for this service
+                    </Text>
+                  ) : null}
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    s.dropdownTrigger,
+                    !selectedServiceId && s.dropdownTriggerDisabled,
+                    Boolean(selectedVariationLabel) && s.dropdownTriggerSelected,
+                  ]}
+                  onPress={() => setVariationPickerVisible(true)}
+                  activeOpacity={0.8}
+                  disabled={!selectedServiceId || saving}
+                >
+                  <View style={s.dropdownLeft}>
+                    <Ionicons
+                      name="layers-outline"
+                      size={17}
+                      color={selectedVariationLabel ? '#4F46E5' : '#94A3B8'}
+                      style={{ marginRight: 8 }}
+                    />
+                    <Text
+                      style={[
+                        s.dropdownText,
+                        !selectedServiceId && s.dropdownTextDisabled,
+                        Boolean(selectedVariationLabel) && s.dropdownTextSelected,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {!selectedServiceId
+                        ? 'Select a service name first'
+                        : selectedVariationLabel || 'Select variation tier...'}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="chevron-down"
+                    size={17}
+                    color={!selectedServiceId ? '#CBD5E1' : '#64748B'}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Price & Turnaround ETA (Manual & Pre-filled) */}
               <View style={s.gridRow}>
                 <View style={s.gridCol}>
                   <Text style={s.label}>Base Price (₹) *</Text>
                   <TextInput
                     style={s.input}
-                    placeholder="e.g. 399"
+                    placeholder="e.g. 299"
                     placeholderTextColor="#94A3B8"
                     keyboardType="numeric"
                     value={price}
@@ -306,12 +757,12 @@ export const ServiceFormModal: React.FC<Props> = ({
                 </View>
               </View>
 
-              {/* Description */}
+              {/* Description (Manual & Pre-filled) */}
               <View style={s.fieldGroup}>
                 <Text style={s.label}>Description *</Text>
                 <TextInput
                   style={[s.input, s.textArea]}
-                  placeholder="Comprehensive service description outlining what is included..."
+                  placeholder="Outline what is included in this service offering..."
                   placeholderTextColor="#94A3B8"
                   value={shortDesc}
                   onChangeText={setShortDesc}
@@ -326,15 +777,15 @@ export const ServiceFormModal: React.FC<Props> = ({
                 <Text style={s.label}>Service Icon</Text>
                 <View style={s.iconRow}>
                   {COMMON_ICONS.map((item) => {
-                    const isSelected = selectedIcon === item.icon;
+                    const isSelected = selectedIcon === item.mc;
                     return (
                       <TouchableOpacity
-                        key={item.icon}
+                        key={item.mc}
                         style={[s.iconBox, isSelected && s.iconBoxActive]}
-                        onPress={() => setSelectedIcon(item.icon)}
+                        onPress={() => setSelectedIcon(item.mc)}
                         activeOpacity={0.75}
                       >
-                        <Feather
+                        <Ionicons
                           name={item.icon as any}
                           size={18}
                           color={isSelected ? '#4F46E5' : '#64748B'}
@@ -349,12 +800,6 @@ export const ServiceFormModal: React.FC<Props> = ({
                   })}
                 </View>
               </View>
-
-              {/* Inline Variations Editor */}
-              <VariationRowEditor
-                variations={variations}
-                onChange={setVariations}
-              />
             </ScrollView>
 
             {/* Bottom Actions */}
@@ -383,6 +828,30 @@ export const ServiceFormModal: React.FC<Props> = ({
             </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
+
+        {/* Modal Pickers */}
+        <OptionPickerModal
+          visible={servicePickerVisible}
+          title="Select Service Name"
+          subtitle="Choose from predefined standard offerings"
+          options={serviceOptions}
+          selectedId={selectedServiceId}
+          loading={loadingCatalog}
+          error={catalogError}
+          onRetry={() => loadCatalog(selectedCategory)}
+          onSelect={handleSelectService}
+          onClose={() => setServicePickerVisible(false)}
+        />
+
+        <OptionPickerModal
+          visible={variationPickerVisible}
+          title="Select Variation Tier"
+          subtitle={name ? `Options for ${name}` : 'Select a variation package'}
+          options={variationOptions}
+          selectedId={selectedVariationLabel ? `selected-${selectedVariationLabel}` : null}
+          onSelect={handleSelectVariation}
+          onClose={() => setVariationPickerVisible(false)}
+        />
       </View>
     </Modal>
   );
@@ -401,7 +870,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
+    maxHeight: '92%',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.15,
@@ -456,7 +925,7 @@ const s = StyleSheet.create({
   },
   scrollArea: {
     paddingHorizontal: 20,
-    maxHeight: 460,
+    maxHeight: 480,
   },
   scrollContent: {
     paddingTop: 14,
@@ -464,6 +933,47 @@ const s = StyleSheet.create({
   },
   fieldGroup: {
     marginBottom: 14,
+  },
+  fieldHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  fieldCounter: {
+    fontSize: 11,
+    color: '#6366F1',
+    fontWeight: '600',
+  },
+  fieldInlineError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF2F2',
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  fieldInlineErrorTxt: {
+    fontSize: 12,
+    color: '#DC2626',
+    flex: 1,
+    marginRight: 8,
+  },
+  fieldRetryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  fieldRetryTxt: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   gridRow: {
     flexDirection: 'row',
@@ -492,6 +1002,47 @@ const s = StyleSheet.create({
   textArea: {
     minHeight: 70,
     textAlignVertical: 'top',
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  dropdownTriggerSelected: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
+  dropdownTriggerLoading: {
+    opacity: 0.75,
+  },
+  dropdownTriggerDisabled: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    opacity: 0.6,
+  },
+  dropdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  dropdownText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    flex: 1,
+  },
+  dropdownTextSelected: {
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  dropdownTextDisabled: {
+    color: '#94A3B8',
   },
   chipScroll: {
     gap: 8,
@@ -588,6 +1139,193 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+
+  // ── OptionPickerModal Styles ───────────────────────────────────────────────
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  pickerBackdrop: {
+    flex: 1,
+  },
+  pickerSheetContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    minHeight: 340,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  pickerHeaderTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  pickerHeaderSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  pickerCloseBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  pickerSearchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  pickerSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: '#0F172A',
+    padding: 0,
+  },
+  pickerBody: {
+    flex: 1,
+  },
+  pickerLoadingWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 50,
+    gap: 12,
+  },
+  pickerLoadingTxt: {
+    fontSize: 13,
+    color: '#64748B',
+  },
+  pickerErrorWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+    gap: 8,
+  },
+  pickerErrorTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  pickerErrorSub: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  pickerRetryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  pickerRetryTxt: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  pickerEmptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    gap: 6,
+  },
+  pickerEmptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  pickerEmptySub: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  pickerScroll: {
+    paddingHorizontal: 20,
+  },
+  pickerScrollContent: {
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 8,
+  },
+  pickerItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  pickerItemCardActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
+  pickerItemTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  pickerItemTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  pickerItemTitleActive: {
+    color: '#4338CA',
+  },
+  pickerBadge: {
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  pickerBadgeTxt: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  pickerItemSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 3,
+    lineHeight: 16,
+  },
+  pickerMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  pickerMetaTxt: {
+    fontSize: 11,
+    color: '#6366F1',
+    fontWeight: '600',
   },
 });
 

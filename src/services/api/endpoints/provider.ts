@@ -170,6 +170,12 @@ export const providerApi = {
     return enriched;
   },
 
+  async getCatalog(categoryId?: string, token?: string): Promise<any[]> {
+    const query = categoryId ? `?categoryId=${encodeURIComponent(categoryId)}` : '';
+    const data = await apiClient.get<any[]>(`/provider/catalog${query}`, { token });
+    return Array.isArray(data) ? data : [];
+  },
+
   async createService(data: any, token?: string): Promise<any> {
     return apiClient.post('/provider/services', data, { token });
   },
@@ -179,7 +185,7 @@ export const providerApi = {
   },
 
   async deactivateService(serviceId: string, token?: string): Promise<any> {
-    return apiClient.delete(`/provider/services/${serviceId}`, { token });
+    return apiClient.del(`/provider/services/${serviceId}`, { token });
   },
 
   async createVariation(serviceId: string, data: any, token?: string): Promise<any> {
@@ -191,7 +197,7 @@ export const providerApi = {
   },
 
   async deleteVariation(variationId: string, token?: string): Promise<any> {
-    return apiClient.delete(`/provider/services/variations/${variationId}`, { token });
+    return apiClient.del(`/provider/services/variations/${variationId}`, { token });
   },
 };
 
